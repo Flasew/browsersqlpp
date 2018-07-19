@@ -115,6 +115,7 @@ for (bindFrom in clauses.from) {
 
   bindTo = clauses.from[bindFrom]["as"];
 
+  //range over tuple attributes: AS {var : var}
   if(typeof(bindTo) === "object"){
     let toDel = [];
     let toAdd = [];
@@ -142,7 +143,6 @@ for (bindFrom in clauses.from) {
 
     // case of lhs of AS is a bound variable.
     else{
-      // item is an iterable object has bind from as key
       for (item of newBind) {
         if (item[bindFrom] !== undefined && typeof(item[bindFrom] === "object")) {
           toDel.push(item);
@@ -163,6 +163,7 @@ for (bindFrom in clauses.from) {
     for (item of toAdd) newBind.add(item);
   }
 
+  //Range over collection elements: AS var (AT var)
   else{
     let toDel = [];
     let toAdd = [];

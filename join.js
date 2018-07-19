@@ -33,9 +33,7 @@ var operatorJoin = function(dbin, bindDB, joinParam) {
               delete newTuple[attr];
             }
           }
-          bindTuple = {};
-          bindTuple[joinParam.bindingName] = newTuple;
-          bindDB.push(bindTuple);
+          bindDB.push(newTuple);
         }
       }
     break;
@@ -45,7 +43,7 @@ var operatorJoin = function(dbin, bindDB, joinParam) {
 
 db = {R:[{a: 1, b: 1}, {a: 2, b: 2}], S:[{c: 1, b: 2}, {c: 2, b: 1}]}
 bdb = []
-joinParam = {lhs: 'R', rhs: 'S', cond:[{lhs: 'a', rhs: 'c'}], joinType: 0, bindingName: 'T'}
+joinParam = {lhs: 'R', rhs: 'S', cond:[{lhs: 'a', rhs: 'c'}], joinType: 0}
 operatorJoin(db, bdb, joinParam)
 /*
 joinParam = {
