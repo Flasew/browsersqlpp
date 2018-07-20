@@ -102,6 +102,7 @@ function evalFromItem(info, envir, bindTuple){
       for(let item of bindTuple) {
 
         let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
+
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
 
@@ -154,23 +155,35 @@ var expressions = {
 /* functions */
 
 function evalExprQuery(expr, envir) {
+  expr = Object.assign({}, expr);
 
+  // console.log("Function name: " + expr.func);
+  // console.log("Parameters: ");
+  // console.log(expr.param);
+  // console.log("envir: ")
+  // console.log(envir)
+
+  let evaluatedParam = [];
   // evaluate parameters first if they're expressions
   for (let i = 0; i < expr.param.length; i++) 
-    if (expr.param[i].isExpr)
-      expr.param[i] = evalExprQuery(expr.param[i]);
 
-  return expressions[expr.func](...expr.param, envir);
+    if (expr.param[i].isExpr) {
+      // console.log("expr.param before: ")
+      // console.log(expr.param[i])
+      evaluatedParam[i] = evalExprQuery(expr.param[i], envir);
+      // console.log("expr.param after: ")
+      // console.log(expr.param[i])
+    }
+    else {
+      evaluatedParam[i] = expr.param[i];
+    }
+
+  let result = expressions[expr.func](...evaluatedParam, envir);
+  // console.log("Eval result: ");
+  // console.log(result);
+  return result;
 }
 
-// function evalExprQuery(expr, environment){
-
-//   switch (expr.func) {
-//     case 'variable':
-//       return environment[expr.param[0]];
-//   }
-
-// }
 var db = '{"readings": {"co": [0.7, [0.5, 2]], "no2": ["repair"], "so2": []}}';
 clause = {
   from: [
@@ -227,7 +240,8 @@ clause = {
         opType: fromOpTypes.range,
         bindFrom: {
           func: 'variable',
-          param: ['a']
+          param: ['a'],
+          isExpr: true
         },
         bindTo: 'v'
       }
@@ -252,3 +266,45 @@ init = {
   }
 }
 
+db = {R:[{a: 1, b: 1}, {a: 2, b: 2}], S:[{c: 1, d: 2}, {c: 2, d: 1}]}
+clause = {
+  from:[
+    {
+      opType: fromOpTypes.range,
+      bindFrom: {
+        func: 'variable',
+        param: ['R'],
+        isExpr: true
+      },
+      bindTo: 'x'
+    },
+    {
+      opType: fromOpTypes.innerjoin,
+      rhs: {
+        opType: fromOpTypes.range,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
+      },
+      on: {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'a'],
+            isExpr: true
+          },
+          {
+            func: 'path',
+            param: ['y', 'c'],
+            isExpr: true
+          }
+        ],
+        isExpr: true
+      }
+    }
+  ]
+}
