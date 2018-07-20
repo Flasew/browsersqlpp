@@ -104,7 +104,10 @@ function evalFromItem(info, envir, bindTuple){
         let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
-          newBind.push(newTuple);
+
+          if (evalExprQuery(info.on, newTuple)) 
+            newBind.push(newTuple);
+
         }
       }
 
@@ -134,6 +137,15 @@ var expressions = {
 
   /* other */
   variable: (name, envir) => envir[name],
+  path: function() {
+    var result = arguments[arguments.length - 1];
+
+    for (let i = 0; i < arguments.length - 1; i++) {
+      result = result[arguments[i]];
+    }
+
+    return result;
+  },
 
   id: i => i // identity, for "value" type
 
@@ -199,6 +211,30 @@ clause = {
   ]
 }
 
+clause = {
+  from:[
+    {
+      opType: fromOpTypes.range,
+      bindFrom: {
+        func: 'variable',
+        param: ['reading'],
+      },
+      bindTo: {attrName: 'g', attrVal: 'a'}
+    },
+    {
+      opType: fromOpTypes.comma,
+      rhs: {
+        opType: fromOpTypes.range,
+        bindFrom: {
+          func: 'variable',
+          param: ['a']
+        },
+        bindTo: 'v'
+      }
+    }
+  ]
+}
+
 var db = '{"sensors": [' + 
          '  [1.3, 2], ' +
          '  [0.7, 0.7, 0.9],' +
@@ -208,3 +244,11 @@ var db = '{"sensors": [' +
          '"readings":[3, 4]}';
 
 var init = JSON.parse(db)
+init = {
+  reading: {
+    co: [0.7, [0.5, 2]],
+    no2: ["repair"],
+    so2: []
+  }
+}
+
