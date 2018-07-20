@@ -23,8 +23,7 @@ function evalFrom(envir, clauses){
 }
 
 function evalFromItem(info, envir, bindTuple){
-  // console.log("IN evalFromItem")
-  // console.log(info.opType)
+
   switch(info["opType"]){
     case fromOpTypes.range:
       var bindTo = info.bindTo;
@@ -80,7 +79,7 @@ function evalFromItem(info, envir, bindTuple){
           }
         }
       }
-      console.log(newBind);
+
       return newBind;
 
     case fromOpTypes.comma:
@@ -88,25 +87,10 @@ function evalFromItem(info, envir, bindTuple){
       var newBind = [];
 
       for(let item of bindTuple) {
-        console.log("item b4:");
-        console.log(item);
-        Object.assign({}, item, envir);
-        console.log("item assign:");
-        console.log(item);
 
         let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
-        console.log("ibr: ");
-        console.log(itemBindResult);
-        console.log("item a bind:");
-        console.log(item)
-        console.log("envir after bind:")
-        console.log(envir)
-        console.log("bindTuple after bind:")
-        console.log(bindTuple)
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
-          console.log("item:");
-          console.log(item)
           newBind.push(newTuple);
         }
       }
@@ -115,14 +99,52 @@ function evalFromItem(info, envir, bindTuple){
   }
 }
 
-function evalExprQuery(expr, environment){
+var expressions = {
 
-  switch (expr.func) {
-    case 'variable':
-      return environment[expr.param[0]];
-  }
+  /* logical operator */
+  eq:  (lhs, rhs) => lhs === rhs,                   // ===
+  neq: (lhs, rhs) => lhs !== rhs,                   // !==
+  lt:  (lhs, rhs) => lhs < rhs,                     // <
+  gt:  (lhs, rhs) => lhs > rhs,                     // >
+  lte: (lhs, rhs) => lhs === rhs || lhs < rhs,      // <=
+  gte: (lhs, rhs) => lhs === rhs || lhs > rhs,      // >=
+  and: (lhs, rhs) => lhs && rhs,                    // &&
+  or:  (lhs, rhs) => lhs || rhs,                    // ||
 
+  /* arithmetical operator */
+  add: (lhs, rhs) => lhs + rhs,
+  sub: (lhs, rhs) => lhs - rhs,
+  mul: (lhs, rhs) => lhs * rhs,
+  div: (lhs, rhs) => lhs / rhs,
+  mod: (lhs, rhs) => lhs % rhs,
+
+  /* other */
+  variable: (name, envir) => envir[name],
+
+  id: i => i // identity, for "value" type
+
+};
+
+/* functions */
+
+function evalExprQuery(expr, envir) {
+
+  // evaluate parameters first if they're expressions
+  for (let i = 0; i < expr.param.length; i++) 
+    if (expr.param[i].isExpr)
+      expr.param[i] = evalExprQuery(expr.param[i]);
+
+  return expressions[expr.func](...expr.param, envir);
 }
+
+// function evalExprQuery(expr, environment){
+
+//   switch (expr.func) {
+//     case 'variable':
+//       return environment[expr.param[0]];
+//   }
+
+// }
 var db = '{"readings": {"co": [0.7, [0.5, 2]], "no2": ["repair"], "so2": []}}';
 clause = {
   from: [
