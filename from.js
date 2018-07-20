@@ -12,10 +12,10 @@ var fromOpTypes = Object.freeze({
   outerflat:  10
 });
 
-function evalFrom(envir, clauses){
+function evalFrom(envir, fromClause){
   var currBind = [{}];
 
-  for(element of clauses.from){
+  for(element of fromClause.from){
     currBind = evalFromItem(element, envir, currBind);
   }
 
@@ -26,7 +26,7 @@ function evalFromItem(info, envir, bindTuple) {
   var newBind = [];
 
   switch (info["opType"]) {
-    case fromOpTypes.range:
+    case fromOpTypes.range: {
       var bindTo = info.bindTo;
       var bindFrom = evalExprQuery(info.bindFrom, envir);
 
@@ -80,8 +80,9 @@ function evalFromItem(info, envir, bindTuple) {
       }
 
       break;
+    }
 
-    case fromOpTypes.comma:
+    case fromOpTypes.comma: {
 
       for (let item of bindTuple) {
 
@@ -93,8 +94,9 @@ function evalFromItem(info, envir, bindTuple) {
       }
         
       break;
+    }
 
-    case fromOpTypes.innerjoin:
+    case fromOpTypes.innerjoin: {
 
       for (let item of bindTuple) {
 
@@ -110,10 +112,10 @@ function evalFromItem(info, envir, bindTuple) {
       }
 
       break;
+    }
 
-    case fromOpTypes.leftjoin:
+    case fromOpTypes.leftjoin: {
 
-      var newBind = [];
       let leftincluded = Array(bindTuple.length).fill(false);
 
       for (let i = 0; i < bindTuple.length; i++) {
@@ -135,13 +137,105 @@ function evalFromItem(info, envir, bindTuple) {
         if (!leftincluded[i]) {
           let newTuple = Object.assign({}, bindTuple[i]);
           newTuple[info.rhs.bindTo] = null;
-          newBind.push(newTuple)
+          newBind.push(newTuple);
         }
       }
 
       break;
+    }
+
+    case fromOpTypes.rightjoin: {
+
+      let rightBindResult = evalFromItem(info.rhs, Object.assign({}, envir), [{}]);
+      let rightincluded = Array(rightBindResult.length).fill(false);
+
+      for (let i = 0; i < rightBindResult.length; i++) {
+
+        let item = rightBindResult[i];
+
+        for (let btup of bindTuple) {
+          let newTuple = Object.assign({}, item, btup);
+
+          if (evalExprQuery(info.on, newTuple)) {
+            newBind.push(newTuple);
+            rightincluded[i] = true;
+          }
+        }
+      }
+
+      for (let i = 0; i < rightBindResult.length; i++) {
+        if (!rightincluded[i]) {
+          let newTuple = Object.assign({}, rightBindResult[i]);
+
+          for (let attr in bindTuple[0]) 
+            newTuple[attr] = null;
+          
+          newBind.push(newTuple);
+        }
+      }
+
+      break;
+    }
+
+    case fromOpTypes.fulljoin: case fromOpTypes.fullcorr: {
+    // full join and full correlate are identical. lhs and rhs cannot use
+    // variable defined on the other side.
+
+      let rightBindResult = evalFromItem(info.rhs, Object.assign({}, envir), [{}]);
+      let leftincluded = Array(bindTuple.length).fill(false);
+      let rightincluded = Array(rightBindResult.length).fill(false);
+
+      for (let i = 0; i < bindTuple.length; i++) {
+        for (let j = 0; j < rightBindResult.length; j++) {
+          
+          let newTuple = Object.assign({}, bindTuple[i], rightBindResult[j]);
+
+          if (evalExprQuery(info.on, newTuple)) {
+            newBind.push(newTuple);
+            leftincluded[i] = true;
+            rightincluded[j] = true;
+          }
+        }
+      }
+
+      for (let i = 0; i < leftincluded.length; i++) {
+
+        if (!leftincluded[i]) {
+          let newTuple = Object.assign({}, bindTuple[i]);
+          newTuple[info.rhs.bindTo] = null;
+          newBind.push(newTuple);
+        }
+
+      }
+
+      for (let i = 0; i < rightincluded.length; i++) {
+
+        if (!rightincluded[i]) {
+          let newTuple = Object.assign({}, rightBindResult[i]);
+
+          for (let attr in bindTuple[0]) 
+            newTuple[attr] = null;
+          
+          newBind.push(newTuple);
+        }
+      }
+
+      break;
+    }
+
+
   }
   return newBind;
+}
+
+function evalWhere(envir, bindOutputFrom, whereClause) {
+  var currBind = []
+  for (let item in bindOutputFrom) {
+    if (evalExprQuery(whereClause, item)) {
+      currBind.push(item);
+    }
+  }
+  return currBind;
 }
 
 var expressions = {
@@ -211,6 +305,8 @@ function evalExprQuery(expr, envir) {
   return result;
 }
 
+
+
 /* --- SAMPLES --- */
 var db = '{"readings": {"co": [0.7, [0.5, 2]], "no2": ["repair"], "so2": []}}';
 clause = {
@@ -228,6 +324,7 @@ clause = {
     }
   ]
 }
+
 clause = {
   from:[
     {
@@ -294,7 +391,7 @@ init = {
   }
 }
 
-db = {R:[{a: 1, b: 1}, {a: 2, b: 2}], S:[{c: 1, d: 2}, {c: 1, d: 1}]}
+db = {R:[{a: 1, b: 1}, {a: 2, b: 2}], S:[{c: 1, d: 2}, {c: 10, d: 1}]}
 clause = {
   from:[
     {
@@ -307,7 +404,7 @@ clause = {
       bindTo: 'x'
     },
     {
-      opType: fromOpTypes.leftjoin,
+      opType: fromOpTypes.fulljoin,
       rhs: {
         opType: fromOpTypes.range,
         bindFrom: {
@@ -334,5 +431,30 @@ clause = {
         isExpr: true
       }
     }
-  ]
+  ],
+  where: {
+    func: 'and',
+    param: [
+      {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'c'],
+          },
+          5
+        ]
+      },
+      {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['y', 'd'],
+          },
+          7
+        ]
+      }
+    ]
+  }
 }
