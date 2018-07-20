@@ -23,13 +23,11 @@ function evalFrom(envir, clauses){
 }
 
 function evalFromItem(info, envir, bindTuple){
-
+  var newBind = [];
   switch(info["opType"]){
     case fromOpTypes.range:
       var bindTo = info.bindTo;
       var bindFrom = evalExprQuery(info.bindFrom, envir);
-
-      var newBind = [];
 
       // range over tuple attributes: AS {var : var}
       if (typeof(bindTo) === 'object') {
@@ -80,7 +78,7 @@ function evalFromItem(info, envir, bindTuple){
         }
       }
 
-      return newBind;
+      break;
 
     case fromOpTypes.comma:
 
@@ -95,8 +93,24 @@ function evalFromItem(info, envir, bindTuple){
         }
       }
         
-      return newBind;
+      break;
+
+    case fromOpTypes.innerjoin:
+
+      var newBind = [];
+
+      for(let item of bindTuple) {
+
+        let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
+        for (let result of itemBindResult) {
+          let newTuple = Object.assign({}, item, result);
+          newBind.push(newTuple);
+        }
+      }
+
+      break;
   }
+  return newBind;
 }
 
 var expressions = {

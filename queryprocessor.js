@@ -57,8 +57,8 @@ queryprocessor.exprQuery = function(exprObj) {
     if (exprObj.param[i].isExpr)
       exprObj.param[i] = queryprocessor.exprQuery(exprObj.param[i]);
 
-  return queryprocessor.expressions[exprObj.expr](...exprObj.param);
-}
+    return queryprocessor.expressions[exprObj.expr](...exprObj.param);
+  }
 
 queryprocessor.setContext = function(dbin) {
   queryprocessor.context = {};
