@@ -22,16 +22,17 @@ function evalFrom(envir, clauses){
   return currBind;
 }
 
-function evalFromItem(info, envir, bindTuple){
+function evalFromItem(info, envir, bindTuple) {
   var newBind = [];
-  switch(info["opType"]){
+
+  switch (info["opType"]) {
     case fromOpTypes.range:
       var bindTo = info.bindTo;
       var bindFrom = evalExprQuery(info.bindFrom, envir);
 
       // range over tuple attributes: AS {var : var}
       if (typeof(bindTo) === 'object') {
-        if(typeof(bindFrom) !== 'object' && Array.isArray(bindFrom))
+        if (typeof(bindFrom) !== 'object' && Array.isArray(bindFrom))
           throw {
             name: 'NotObject',
             message: 'Not an object'
@@ -55,7 +56,7 @@ function evalFromItem(info, envir, bindTuple){
 
       // Range over collection elements: AS var (AT var)
       else {
-        if(!Array.isArray(bindFrom))
+        if (!Array.isArray(bindFrom))
           bindFrom = [bindFrom];
 
         let pivot = info.at;
@@ -82,9 +83,7 @@ function evalFromItem(info, envir, bindTuple){
 
     case fromOpTypes.comma:
 
-      var newBind = [];
-
-      for(let item of bindTuple) {
+      for (let item of bindTuple) {
 
         let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
         for (let result of itemBindResult) {
@@ -97,9 +96,7 @@ function evalFromItem(info, envir, bindTuple){
 
     case fromOpTypes.innerjoin:
 
-      var newBind = [];
-
-      for(let item of bindTuple) {
+      for (let item of bindTuple) {
 
         let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
 
@@ -109,6 +106,36 @@ function evalFromItem(info, envir, bindTuple){
           if (evalExprQuery(info.on, newTuple)) 
             newBind.push(newTuple);
 
+        }
+      }
+
+      break;
+
+    case fromOpTypes.leftjoin:
+
+      var newBind = [];
+      let leftincluded = Array(bindTuple.length).fill(false);
+
+      for (let i = 0; i < bindTuple.length; i++) {
+
+        let item = bindTuple[i];
+        let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
+
+        for (let result of itemBindResult) {
+          let newTuple = Object.assign({}, item, result);
+
+          if (evalExprQuery(info.on, newTuple)) {
+            newBind.push(newTuple);
+            leftincluded[i] = true;
+          }
+        }
+      }
+
+      for (let i = 0; i < leftincluded.length; i++) {
+        if (!leftincluded[i]) {
+          let newTuple = Object.assign({}, bindTuple[i]);
+          newTuple[info.rhs.bindTo] = null;
+          newBind.push(newTuple)
         }
       }
 
@@ -184,6 +211,7 @@ function evalExprQuery(expr, envir) {
   return result;
 }
 
+/* --- SAMPLES --- */
 var db = '{"readings": {"co": [0.7, [0.5, 2]], "no2": ["repair"], "so2": []}}';
 clause = {
   from: [
@@ -266,7 +294,7 @@ init = {
   }
 }
 
-db = {R:[{a: 1, b: 1}, {a: 2, b: 2}], S:[{c: 1, d: 2}, {c: 2, d: 1}]}
+db = {R:[{a: 1, b: 1}, {a: 2, b: 2}], S:[{c: 1, d: 2}, {c: 1, d: 1}]}
 clause = {
   from:[
     {
@@ -279,7 +307,7 @@ clause = {
       bindTo: 'x'
     },
     {
-      opType: fromOpTypes.innerjoin,
+      opType: fromOpTypes.leftjoin,
       rhs: {
         opType: fromOpTypes.range,
         bindFrom: {
