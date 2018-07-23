@@ -1,30 +1,30 @@
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
  */
-var fromOpTypes = Object.freeze({
-  range:      0,
-  comma:      1,
-  innerjoin:  2,
-  leftjoin:   3,
-  rightjoin:  4,
-  fulljoin:   5,
-  innercorr:  6,
-  leftcorr:   7,
-  fullcorr:   8,
-  innerflat:  9,
-  outerflat:  10,
-  rangepair:  11
+const FROM_OP_TYPES = Object.freeze({
+  RANGE:      0,
+  COMMA:      1,
+  INNERJOIN:  2,
+  LEFTJOIN:   3,
+  RIGHTJOIN:  4,
+  FULLJOIN:   5,
+  INNERCORR:  6,
+  LEFTCORR:   7,
+  FULLCORR:   8,
+  INNERFLAT:  9,
+  OUTERFLAT:  10,
+  RANGEPAIR:  11
 });
 
 /**
  * Type of different "select" as an enum. Used in the select clause.
- * Note: sqlselect is a syntactic sugar of the element case; during query 
+ * Note: SQLSELECT is a syntactic sugar of the element case; during query 
  * execution it will be converted to an "select element" clause.
  */
-var selectTypes = Object.freeze({
-  element: 0,
-  attribute: 1,
-  sqlselect: 2
+const SEL_TYPES = Object.freeze({
+  ELEMENT:   0,
+  ATTRIBUTE: 1,
+  SQLSELECT: 2
 });
 
 /**
@@ -33,7 +33,7 @@ var selectTypes = Object.freeze({
  * implemented as functions. Called by evalExprQuery in the form of 
  * expression['function_name']
  */
-var expressions = {
+const EXPRESSIONS = {
 
   /* logical operator */
   eq:  (lhs, rhs) => lhs === rhs,                   // ===
@@ -120,7 +120,7 @@ function evalExprQuery(expr, envir) {
   // console.log(envir)
 
   let evaluatedParam = [];
-  // evaluate parameters first if they're expressions
+  // evaluate parameters first if they're EXPRESSIONS
   for (let i = 0; i < expr.param.length; i++) 
 
     if (expr.param[i].isExpr) {
@@ -134,7 +134,7 @@ function evalExprQuery(expr, envir) {
       evaluatedParam[i] = expr.param[i];
     }
 
-  let result = expressions[expr.func](...evaluatedParam, envir);
+  let result = EXPRESSIONS[expr.func](...evaluatedParam, envir);
   // console.log("Eval result: ");
   // console.log(result);
   return result;
@@ -204,7 +204,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
   switch (selectClause.selectType) {
 
     // SELECT ELEMENT ...
-    case selectTypes.element: {
+    case SEL_TYPES.ELEMENT: {
       var result = [];
 
       for(let item of bindOutputWhere) {
@@ -215,7 +215,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
     }
 
     // SELECT ATTRIBUTE {:} ...
-    case selectTypes.attribute: {
+    case SEL_TYPES.ATTRIBUTE: {
       var result = {};
 
       for(let item of bindOutputWhere) {
@@ -237,20 +237,28 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
     }
 
     // SELECT ..., parsed to SELECT ELEMENT first and then recursively evaluated
-    case selectTypes.sqlselect: {
-      var elementReconstruct = {selectType: selectTypes.element};
+    case SEL_TYPES.SQLSELECT: {
+      var elementReconstruct = {
+        selectType: SEL_TYPES.ELEMENT,
+        selectExpr: {
+          func: 'obj',
+          param: [],
+          isExpr: true
+        }
+      };
 
       for(let item of selectClause["selectPairs"]) {
-        if(item["as"] === undefined){
+        if(item.as === undefined){
           let lastElementIndex = item.from.param.length - 1;
 
-          item["as"] = item.from.param[lastElementIndex];
+          item.as = item.from.param[lastElementIndex];
         }
 
-        let attrName = item["as"];
-        let attrVal = item["from"];
+        let newObj = {};
+        newObj.attrName = item.as;
+        newObj.attrVal = item.from;
 
-        elementReconstruct[attrName] = attrVal;
+        elementReconstruct.selectExpr.param.push(newObj);
 
       }
 
@@ -274,19 +282,21 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
  * @return {array}            binding tuple after the from_item being evaluated
  */
 function evalFromItem(info, envir, bindTuple) {
+
   var newBind = [];
 
   switch (info.opType) {
 
-    // "range over" operator (line 4)
-    case fromOpTypes.range: {
+    // "RANGE over" operator (line 4)
+    case FROM_OP_TYPES.RANGE: {
 
       var bindTo = info.bindTo;
       var bindFrom = evalExprQuery(info.bindFrom, envir);
 
       // Range over collection elements: AS var (AT var)
-      if (!Array.isArray(bindFrom))
+      if (!Array.isArray(bindFrom)) {
         bindFrom = [bindFrom];
+      }
 
       let pivot = info.at;
       let pivotIndex = 1;
@@ -310,12 +320,12 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
-    // range over an name:value pair (line 5)
-    case fromOpTypes.rangepair: {
+    // RANGE over an name:value pair (line 5)
+    case FROM_OP_TYPES.RANGEPAIR: {
       var bindTo = info.bindTo;
       var bindFrom = evalExprQuery(info.bindFrom, envir);
 
-      // range over tuple attributes: AS {var : var}
+      // RANGE over tuple attributes: AS {var : var}
       if (typeof(bindFrom) !== 'object' && Array.isArray(bindFrom))
         throw {
           name: 'NotObject',
@@ -340,8 +350,8 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
-    // "comma" operator representing Cartesian product (flatten also allowed)
-    case fromOpTypes.comma: {
+    // "COMMA" operator representing Cartesian product (flatten also allowed)
+    case FROM_OP_TYPES.COMMA: {
 
       for (let item of bindTuple) {
 
@@ -356,7 +366,7 @@ function evalFromItem(info, envir, bindTuple) {
     }
 
     // inner join operator, same as SQL inner join (mostly theta join)
-    case fromOpTypes.innerjoin: {
+    case FROM_OP_TYPES.INNERJOIN: {
 
       for (let item of bindTuple) {
 
@@ -375,7 +385,7 @@ function evalFromItem(info, envir, bindTuple) {
     }
 
     // left join operator same as SQL LEFT OUTER JOIN
-    case fromOpTypes.leftjoin: {
+    case FROM_OP_TYPES.LEFTJOIN: {
 
       let leftincluded = Array(bindTuple.length).fill(false);
 
@@ -406,7 +416,7 @@ function evalFromItem(info, envir, bindTuple) {
     }
 
     // right join operator. Notice the RHS cannot contain var from LHS.
-    case fromOpTypes.rightjoin: {
+    case FROM_OP_TYPES.RIGHTJOIN: {
 
       let rightBindResult = evalFromItem(info.rhs, Object.assign({}, envir), [{}]);
       let rightincluded = Array(rightBindResult.length).fill(false);
@@ -440,7 +450,7 @@ function evalFromItem(info, envir, bindTuple) {
     }
 
     // full join & full correlate operator, same as SQL FULL OUTER JOIN
-    case fromOpTypes.fulljoin: case fromOpTypes.fullcorr: {
+    case FROM_OP_TYPES.FULLJOIN: case FROM_OP_TYPES.FULLCORR: {
     // full join and full correlate are identical. lhs and rhs cannot use
     // variable defined on the other side.
 
@@ -485,7 +495,6 @@ function evalFromItem(info, envir, bindTuple) {
 
       break;
     }
-
   }
   return newBind;
 }
