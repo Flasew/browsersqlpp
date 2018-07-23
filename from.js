@@ -111,11 +111,14 @@ function evalExprQuery(expr, envir) {
 
 
 function swfQuery(db, query) {
-
+  var outputFrom = evalFrom(db, query.from);
+  var outputWhere = evalWhere(db, outputFrom, query.where);
+  var outputSelect = evalSelect(db, outputWhere, query.select);
+  return outputSelect;
 }
 
 function evalFrom(envir, fromClause){
-  var currBind = [{}];
+  var currBind = [];
 
   for (let element of fromClause){
     currBind = evalFromItem(element, envir, currBind);
