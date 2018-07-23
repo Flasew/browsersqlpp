@@ -12,14 +12,189 @@ var fromOpTypes = Object.freeze({
   outerflat:  10
 });
 
+var selectTypes = Object.freeze({
+  element: 0,
+  attribute: 1,
+  sqlselect: 2
+});
+
+
+var expressions = {
+
+  /* logical operator */
+  eq:  (lhs, rhs) => lhs === rhs,                   // ===
+  neq: (lhs, rhs) => lhs !== rhs,                   // !==
+  lt:  (lhs, rhs) => lhs < rhs,                     // <
+  gt:  (lhs, rhs) => lhs > rhs,                     // >
+  lte: (lhs, rhs) => lhs === rhs || lhs < rhs,      // <=
+  gte: (lhs, rhs) => lhs === rhs || lhs > rhs,      // >=
+  and: (lhs, rhs) => lhs && rhs,                    // &&
+  or:  (lhs, rhs) => lhs || rhs,                    // ||
+
+  /* arithmetical operator */
+  add: (lhs, rhs) => lhs + rhs,
+  sub: (lhs, rhs) => lhs - rhs,
+  mul: (lhs, rhs) => lhs * rhs,
+  div: (lhs, rhs) => lhs / rhs,
+  mod: (lhs, rhs) => lhs % rhs,
+
+  /* other */
+  variable: (name, envir) => envir[name],
+  path: function() {
+    var result = arguments[arguments.length - 1];
+
+    for (let i = 0; i < arguments.length - 1; i++) {
+      result = result[arguments[i]];
+    }
+
+    return result;
+  },
+
+  id: i => i, // identity, for "value" type
+
+  obj: function() {
+    var result = {};
+
+    for(let i = 0; i < arguments.length - 1; i++){
+      result[arguments[i]["attrName"]] = evalExprQuery(arguments[i]["attrVal"], arguments[arguments.length - 1]);
+    }
+
+    return result;
+  },
+
+  arr: function() {
+    var result = [];
+
+    for(let i = 0; i < arguments.length - 1; i++){
+      result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
+    }
+
+    return result;
+  }
+};
+
+
+function evalExprQuery(expr, envir) {
+
+  // identity
+  if (expr.isExpr === undefined) 
+    return expr;
+
+  expr = Object.assign({}, expr);
+
+  // console.log("Function name: " + expr.func);
+  // console.log("Parameters: ");
+  // console.log(expr.param);
+  // console.log("envir: ")
+  // console.log(envir)
+
+  let evaluatedParam = [];
+  // evaluate parameters first if they're expressions
+  for (let i = 0; i < expr.param.length; i++) 
+
+    if (expr.param[i].isExpr) {
+      // console.log("expr.param before: ")
+      // console.log(expr.param[i])
+      evaluatedParam[i] = evalExprQuery(expr.param[i], envir);
+      // console.log("expr.param after: ")
+      // console.log(expr.param[i])
+    }
+    else {
+      evaluatedParam[i] = expr.param[i];
+    }
+
+  let result = expressions[expr.func](...evaluatedParam, envir);
+  // console.log("Eval result: ");
+  // console.log(result);
+  return result;
+}
+
+
+function swfQuery(db, query) {
+
+}
+
 function evalFrom(envir, fromClause){
   var currBind = [{}];
 
-  for(element of fromClause.from){
+  for (let element of fromClause){
     currBind = evalFromItem(element, envir, currBind);
   }
 
   return currBind;
+}
+
+function evalWhere(envir, bindOutputFrom, whereClause) {
+  var currBind = []
+  for (let item of bindOutputFrom) {
+    // console.log('item: ')
+    // console.log(item)
+    // console.log("evalResult: ")
+    // console.log(whereClause, item)
+    if (evalExprQuery(whereClause, Object.assign({}, item, envir))) {
+      currBind.push(item);
+    }
+  }
+  return currBind;
+}
+
+function evalSelect(envir, bindOutputWhere, selectClause) {
+
+  switch (selectClause.selectType) {
+    case selectTypes.element: {
+      var result = [];
+
+      for(let item of bindOutputWhere) {
+        result.push(evalExprQuery(selectClause["selectExpr"], Object.assign({}, item, envir)));
+      }
+
+      return result;
+    }
+
+    case selectTypes.attribute: {
+      var result = {};
+
+      for(let item of bindOutputWhere) {
+        let attrName = evalExprQuery(selectClause["selectAttrName"], Object.assign({}, item, envir));
+
+        if(typeof(attrName) !== 'string'){
+          throw {
+            name: 'NotString',
+            message: 'Not a string'
+          };
+        }
+
+        let attrVal = evalExprQuery(selectClause["selectAttrVal"],Object.assign({}, item, envir));
+
+        result[attrName] = attrVal;
+      }
+
+      return result;
+    }
+
+    case selectTypes.sqlselect: {
+      var elementReconstruct = {selectType: selectTypes.element};
+
+      for(let item of selectClause["selectPairs"]) {
+        if(item["as"] === undefined){
+          let lastElementIndex = item.from.param.length - 1;
+
+          item["as"] = item.from.param[lastElementIndex];
+        }
+
+        let attrName = item["as"];
+        let attrVal = item["from"];
+
+        elementReconstruct[attrName] = attrVal;
+
+      }
+
+      var result = evalSelect(envir, bindOutputWhere, elementReconstruct);
+
+      return result;
+    }
+  }
+
 }
 
 function evalFromItem(info, envir, bindTuple) {
@@ -223,86 +398,12 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
-
   }
   return newBind;
 }
 
-function evalWhere(envir, bindOutputFrom, whereClause) {
-  var currBind = []
-  for (let item in bindOutputFrom) {
-    if (evalExprQuery(whereClause, item)) {
-      currBind.push(item);
-    }
-  }
-  return currBind;
-}
 
-var expressions = {
 
-  /* logical operator */
-  eq:  (lhs, rhs) => lhs === rhs,                   // ===
-  neq: (lhs, rhs) => lhs !== rhs,                   // !==
-  lt:  (lhs, rhs) => lhs < rhs,                     // <
-  gt:  (lhs, rhs) => lhs > rhs,                     // >
-  lte: (lhs, rhs) => lhs === rhs || lhs < rhs,      // <=
-  gte: (lhs, rhs) => lhs === rhs || lhs > rhs,      // >=
-  and: (lhs, rhs) => lhs && rhs,                    // &&
-  or:  (lhs, rhs) => lhs || rhs,                    // ||
 
-  /* arithmetical operator */
-  add: (lhs, rhs) => lhs + rhs,
-  sub: (lhs, rhs) => lhs - rhs,
-  mul: (lhs, rhs) => lhs * rhs,
-  div: (lhs, rhs) => lhs / rhs,
-  mod: (lhs, rhs) => lhs % rhs,
-
-  /* other */
-  variable: (name, envir) => envir[name],
-  path: function() {
-    var result = arguments[arguments.length - 1];
-
-    for (let i = 0; i < arguments.length - 1; i++) {
-      result = result[arguments[i]];
-    }
-
-    return result;
-  },
-
-  id: i => i // identity, for "value" type
-
-};
-
-/* functions */
-
-function evalExprQuery(expr, envir) {
-  expr = Object.assign({}, expr);
-
-  // console.log("Function name: " + expr.func);
-  // console.log("Parameters: ");
-  // console.log(expr.param);
-  // console.log("envir: ")
-  // console.log(envir)
-
-  let evaluatedParam = [];
-  // evaluate parameters first if they're expressions
-  for (let i = 0; i < expr.param.length; i++) 
-
-    if (expr.param[i].isExpr) {
-      // console.log("expr.param before: ")
-      // console.log(expr.param[i])
-      evaluatedParam[i] = evalExprQuery(expr.param[i], envir);
-      // console.log("expr.param after: ")
-      // console.log(expr.param[i])
-    }
-    else {
-      evaluatedParam[i] = expr.param[i];
-    }
-
-  let result = expressions[expr.func](...evaluatedParam, envir);
-  // console.log("Eval result: ");
-  // console.log(result);
-  return result;
-}
 
 

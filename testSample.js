@@ -41,6 +41,70 @@ clause = {
   ]
 }
 
+evalExprQuery({
+  func: 'path',
+  param: ['reading', 'co'],
+  isExpr: true
+})
+
+evalExprQuery({
+  func: 'add',
+  param: [1, {
+    func: 'sub',
+    param: [7, 3],
+    isExpr: true
+  }],
+  isExpr: true
+})
+
+
+var db = {
+  W: [1,2,3,4,5,6,7],
+  X: [{a: 1, b: 2}, {a: 2, b: 2}]
+}
+
+clause = {
+  from:[
+    {
+      opType: fromOpTypes.range,
+      bindFrom: {
+        func: 'variable',
+        param: ['R'],
+        isExpr: true
+      },
+      bindTo: 'x'
+    },
+    {
+      opType: fromOpTypes.innerjoin,
+      rhs: {
+        opType: fromOpTypes.range,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
+      },
+      on: {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'a'],
+            isExpr: true
+          },
+          {
+            func: 'path',
+            param: ['y', 'c'],
+            isExpr: true
+          }
+        ],
+        isExpr: true
+      }
+    }
+  ]
+}
+
 clause = {
   from:[
     {
@@ -83,8 +147,8 @@ init = {
   }
 }
 
-db = {R:[{a: 1, b: 1}, {a: 2, b: 2}, , {a: 2, b: 5}], S:[{c: 1, d: 2}, {c: 10, d: 1}, {c: 8, d: 7}]}
-clause = {
+var db = {R:[{a: 1, b: 1}, {a: 2, b: 2}, {a: 2, b: 5}], S:[{c: 1, d: 2}, {c: 10, d: 1}, {c: 8, d: 7}]}
+var clause = {
   from:[
     {
       opType: fromOpTypes.range,
@@ -112,25 +176,30 @@ clause = {
     func: 'and',
     param: [
       {
-        func: 'eq',
+        func: 'gt',
         param: [
+          5,
           {
             func: 'path',
-            param: ['x', 'c'],
-          },
-          5
-        ]
+            param: ['x', 'b'], 
+            isExpr: true
+          }
+        ], 
+        isExpr: true
       },
       {
-        func: 'eq',
+        func: 'gte',
         param: [
           {
             func: 'path',
-            param: ['y', 'd'],
+            param: ['y', 'd'], 
+            isExpr: true
           },
-          7
-        ]
+          2
+        ], 
+        isExpr: true
       }
-    ]
+    ], 
+    isExpr: true
   }
 }
