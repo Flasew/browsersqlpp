@@ -1,3 +1,6 @@
+/**
+ * Type of different "from operations" as an enum. Used in the from clause. 
+ */
 var fromOpTypes = Object.freeze({
   range:      0,
   comma:      1,
@@ -13,13 +16,23 @@ var fromOpTypes = Object.freeze({
   rangepair:  11
 });
 
+/**
+ * Type of different "select" as an enum. Used in the select clause.
+ * Note: sqlselect is a syntactic sugar of the element case; during query 
+ * execution it will be converted to an "select element" clause.
+ */
 var selectTypes = Object.freeze({
   element: 0,
   attribute: 1,
   sqlselect: 2
 });
 
-
+/**
+ * All possible different expressions used in expression query. 
+ * The object 'expression' is essentially a library of different expressions,
+ * implemented as functions. Called by evalExprQuery in the form of 
+ * expression['function_name']
+ */
 var expressions = {
 
   /* logical operator */
@@ -40,7 +53,11 @@ var expressions = {
   mod: (lhs, rhs) => lhs % rhs,
 
   /* other */
+
+  // retrieve the value of a variable under an environment
   variable: (name, envir) => envir[name],
+
+  // retrieve the value of a variable located by a path 
   path: function() {
     var result = arguments[arguments.length - 1];
 
@@ -51,8 +68,9 @@ var expressions = {
     return result;
   },
 
-  id: i => i, // identity, for "value" type
+  id: i => i, // identity
 
+  // evaluate to the form of {attr: expr}
   obj: function() {
     var result = {};
 
@@ -63,6 +81,7 @@ var expressions = {
     return result;
   },
 
+  // evaluated to an array of variable in the order of argument
   arr: function() {
     var result = [];
 
@@ -74,7 +93,18 @@ var expressions = {
   }
 };
 
-
+/**
+ * Evaluate an expression query. An expression query is specified as an object
+ * in the following format: {func: <string>, param: <array>, isExpr: true}
+ * otherwise the expression is treated as an identity and itself will be returned. 
+ * For the isExpr objects, it will have a specified function (func) with 
+ * parameters given in param as an array; if param also contains an isExpr 
+ * object, it will be evaluated recursively. When calling the "func" functions,
+ * the environment will always be given as the LAST parameter to func.
+ * @param  {object} expr  Expression object, if with an isExpr will be evaluated, otherwise identity returned
+ * @param  {object} envir environment for the evaluation, usually binding environment concated with binding tuple
+ * @return {object}       result of the evaluation
+ */
 function evalExprQuery(expr, envir) {
 
   // identity
@@ -110,7 +140,12 @@ function evalExprQuery(expr, envir) {
   return result;
 }
 
-
+/**
+ * Evaluate an SWF (select-where-from) query
+ * @param  {object} db    raw database parsed to javascript object (NOT JSON)
+ * @param  {object} query Parsed query clause, in the format specified in readme.
+ * @return {object}       result of query, in javascript object (NOT JSON)
+ */
 function swfQuery(db, query) {
   var outputFrom = evalFrom(db, query.from);
   var outputWhere = evalWhere(db, outputFrom, query.where);
@@ -118,9 +153,19 @@ function swfQuery(db, query) {
   return outputSelect;
 }
 
+/**
+ * Evaluate the FROM clause of a query. The FROM clause will evaluate to a bag
+ * (implemented as array) of bound tuples, which is to be passed to the following
+ * clauses
+ * @param  {object} envir      environment of the execution. For FROM clause this is usually the database
+ * @param  {object} fromClause FROM clause parsed to javascript object format. See readme for detail
+ * @return {array}             binding tuples after the FROM clause is evaluated
+ */
 function evalFrom(envir, fromClause){
-  var currBind = [];
+  var currBind = [{}];
 
+  // since syntax specification does not allow (), 
+  // FROM clause are evaluated from left to right.
   for (let element of fromClause){
     currBind = evalFromItem(element, envir, currBind);
   }
@@ -128,8 +173,17 @@ function evalFrom(envir, fromClause){
   return currBind;
 }
 
+/**
+ * Evaluate the WHERE clause of a query. The parsed format of WHERE clause will be a single expression.
+ * @param  {object} envir          environment of the evaluation containing variable definitions 
+ * @param  {array}  bindOutputFrom binding tuple output of the FROM clause
+ * @param  {object} whereClause    WHERE clause of the query parsed to javascript object format
+ * @return {array}                 result of the execution of WHERE clause.
+ */
 function evalWhere(envir, bindOutputFrom, whereClause) {
-  var currBind = []
+
+  var currBind = [];
+
   for (let item of bindOutputFrom) {
     if (evalExprQuery(whereClause, Object.assign({}, item, envir))) {
       currBind.push(item);
@@ -138,9 +192,18 @@ function evalWhere(envir, bindOutputFrom, whereClause) {
   return currBind;
 }
 
+/**
+ * Evaluate the SELECT clause of a query. 
+ * @param  {object} envir           the environment of a query
+ * @param  {array}  bindOutputWhere binding tuple out of the previous clause
+ * @param  {object} selectClause    select clause parsed to the javascript object format
+ * @return {array}                  result of the query (not distinguished between bag and arr for now)
+ */
 function evalSelect(envir, bindOutputWhere, selectClause) {
 
   switch (selectClause.selectType) {
+
+    // SELECT ELEMENT ...
     case selectTypes.element: {
       var result = [];
 
@@ -151,6 +214,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
       return result;
     }
 
+    // SELECT ATTRIBUTE {:} ...
     case selectTypes.attribute: {
       var result = {};
 
@@ -172,6 +236,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
       return result;
     }
 
+    // SELECT ..., parsed to SELECT ELEMENT first and then recursively evaluated
     case selectTypes.sqlselect: {
       var elementReconstruct = {selectType: selectTypes.element};
 
@@ -197,10 +262,23 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
 
 }
 
+/**
+ * Evaluate one from_item from the FROM clause. The from clause will be parsed
+ * to an array of from_item objects and evaluated in order. Each of the object
+ * will be evaluated based on the result of the previous output as well as 
+ * other information depending on the operator type (e.g., the join operator
+ * will have it's RHS as part of the information of evaluation) 
+ * @param  {object} info      a from_item object specifying the op_type, data, etc.
+ * @param  {object} envir     environment of the execution
+ * @param  {array}  bindTuple binding tuples that's already been evaluated
+ * @return {array}            binding tuple after the from_item being evaluated
+ */
 function evalFromItem(info, envir, bindTuple) {
   var newBind = [];
 
-  switch (info["opType"]) {
+  switch (info.opType) {
+
+    // "range over" operator (line 4)
     case fromOpTypes.range: {
 
       var bindTo = info.bindTo;
@@ -232,6 +310,7 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
+    // range over an name:value pair (line 5)
     case fromOpTypes.rangepair: {
       var bindTo = info.bindTo;
       var bindFrom = evalExprQuery(info.bindFrom, envir);
@@ -261,6 +340,7 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
+    // "comma" operator representing Cartesian product (flatten also allowed)
     case fromOpTypes.comma: {
 
       for (let item of bindTuple) {
@@ -275,6 +355,7 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
+    // inner join operator, same as SQL inner join (mostly theta join)
     case fromOpTypes.innerjoin: {
 
       for (let item of bindTuple) {
@@ -293,6 +374,7 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
+    // left join operator same as SQL LEFT OUTER JOIN
     case fromOpTypes.leftjoin: {
 
       let leftincluded = Array(bindTuple.length).fill(false);
@@ -323,6 +405,7 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
+    // right join operator. Notice the RHS cannot contain var from LHS.
     case fromOpTypes.rightjoin: {
 
       let rightBindResult = evalFromItem(info.rhs, Object.assign({}, envir), [{}]);
@@ -356,6 +439,7 @@ function evalFromItem(info, envir, bindTuple) {
       break;
     }
 
+    // full join & full correlate operator, same as SQL FULL OUTER JOIN
     case fromOpTypes.fulljoin: case fromOpTypes.fullcorr: {
     // full join and full correlate are identical. lhs and rhs cannot use
     // variable defined on the other side.
