@@ -26,7 +26,346 @@ const RSTDB = {
   ]
 };
 
+const REDB = {
+  readings: [ 1.3, 0.7, 0.3, 0.8]
+};
 
+const SENSORDB = {
+  sensors: [
+    [1.3, 2], 
+    [0.7, 0.7, 0.9], 
+    [0.3, 0.8, 1.1], 
+    [0.7, 1.4]  
+  ]
+};
+
+const RSDB = {
+  R: [
+    {a: 1, b: 10}, 
+    {a: 2, b: 20},
+    {a: 3, b: 30}
+  ], 
+  S: [
+    {c: 3,  d: 60}, 
+    {c: 4,  d: 80}, 
+    {c: 1,  d: 20}
+  ]
+};
+
+const READINGSDB = {readings: [
+  { no2: 0.6, co: 0.7,     co2: [ 0.5, 2 ] },
+  { no2: 0.5, co: [ 0.4 ], co2: 1.3 }
+]};
+
+/* From Clause Test Cases */
+
+/* --- TEST CASE 1 --- */
+/* range over collection elements */
+function testFromElement(db) {
+
+  var clause = {
+    from: [
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['readings'],
+          isExpr: true
+        },
+        bindTo: 'r'
+      }
+    ]
+  };
+
+  var expected = '[{"r":1.3},{"r":0.7},{"r":0.3},{"r":0.8}]';
+  var result = JSON.stringify(evalFrom(db, clause.from));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+}
+
+/* --- TEST CASE 2 --- */
+/* range over tuple attributes */
+function testFromAttribute(db) {
+
+  var clause = {
+    from: [
+      {
+        opType: FROM_OP_TYPES.RANGEPAIR,
+        bindFrom: {
+          func: 'variable',
+          param: ['reading'],
+          isExpr: true
+        },
+        bindTo: {
+          attrName: 'g', 
+          attrVal: 'v'
+        }
+      }
+    ],
+  };
+
+  var expected = '[{"g":"co","v":[0.7,[0.5,2]]},{"g":"no2","v":["repair"]},{"g":"so2","v":[]}]';
+  var result = JSON.stringify((evalFrom(db, clause.from)));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+}
+
+/* --- TEST CASE 3 --- */
+/* Cartesian Product  */
+function testFromComma(db) {
+
+  var clause = {
+    from:[
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['sensors'],
+          isExpr: true
+        },
+        bindTo: 's'
+      },
+      {
+        opType: FROM_OP_TYPES.COMMA,
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {
+            func: 'variable',
+            param: ['s'],
+            isExpr: true
+          },
+          bindTo: 'r'
+        }
+      }
+    ]
+  };
+
+  var expected = '[{"s":[1.3,2],"r":1.3},{"s":[1.3,2],"r":2},{"s":[0.7,0.7,0.9],"r":0.7},{"s":[0.7,0.7,0.9],"r":0.7},{"s":[0.7,0.7,0.9],"r":0.9},{"s":[0.3,0.8,1.1],"r":0.3},{"s":[0.3,0.8,1.1],"r":0.8},{"s":[0.3,0.8,1.1],"r":1.1},{"s":[0.7,1.4],"r":0.7},{"s":[0.7,1.4],"r":1.4}]';
+  var result = JSON.stringify(evalFrom(db, clause.from));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+
+}
+
+/* --- TEST CASE 4 --- */
+/* Inner Join  */
+function testFromInnerJoin(db) {
+
+  var clause = {
+    from:[
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['R'],
+          isExpr: true
+        },
+        bindTo: 'x'
+      },
+      {
+        opType: FROM_OP_TYPES.INNERJOIN,
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {
+            func: 'variable',
+            param: ['S'],
+            isExpr: true
+          },
+          bindTo: 'y'
+        },
+        on: {
+          func: 'eq',
+          param: [
+            {
+              func: 'path',
+              param: ['x', 'a'],
+              isExpr: true
+            },
+            {
+              func: 'path',
+              param: ['y', 'c'],
+              isExpr: true
+            }
+          ],
+          isExpr: true
+        }
+      }
+    ]
+  };
+
+  var expected = '[{"x":{"a":1,"b":10},"y":{"c":1,"d":20}},{"x":{"a":3,"b":30},"y":{"c":3,"d":60}}]';
+  var result = JSON.stringify(evalFrom(db, clause.from));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+}
+
+/* --- TEST CASE 5 --- */
+/* Left Join  */
+function testFromLeftJoin(db) {
+
+  var clause = {
+    from:[
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['R'],
+          isExpr: true
+        },
+        bindTo: 'x'
+      },
+      {
+        opType: FROM_OP_TYPES.LEFTJOIN,
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {
+            func: 'variable',
+            param: ['S'],
+            isExpr: true
+          },
+          bindTo: 'y'
+        },
+        on: {
+          func: 'eq',
+          param: [
+            {
+              func: 'path',
+              param: ['x', 'a'],
+              isExpr: true
+            },
+            {
+              func: 'path',
+              param: ['y', 'c'],
+              isExpr: true
+            }
+          ],
+          isExpr: true
+        }
+      }
+    ]
+  };
+
+  var expected = '[{"x":{"a":1,"b":10},"y":{"c":1,"d":20}},{"x":{"a":3,"b":30},"y":{"c":3,"d":60}},{"x":{"a":2,"b":20},"y":null}]';
+  var result = JSON.stringify(evalFrom(db, clause.from));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+}
+
+/* --- TEST CASE 6 --- */
+/* Right Join  */
+function testFromRightJoin(db) {
+
+  var clause = {
+    from:[
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['R'],
+          isExpr: true
+        },
+        bindTo: 'x'
+      },
+      {
+        opType: FROM_OP_TYPES.RIGHTJOIN,
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {
+            func: 'variable',
+            param: ['S'],
+            isExpr: true
+          },
+          bindTo: 'y'
+        },
+        on: {
+          func: 'eq',
+          param: [
+            {
+              func: 'path',
+              param: ['x', 'a'],
+              isExpr: true
+            },
+            {
+              func: 'path',
+              param: ['y', 'c'],
+              isExpr: true
+            }
+          ],
+          isExpr: true
+        }
+      }
+    ]
+  };
+
+  var expected = '[{"y":{"c":3,"d":60},"x":{"a":3,"b":30}},{"y":{"c":1,"d":20},"x":{"a":1,"b":10}},{"y":{"c":4,"d":80},"x":null}]';
+  var result = JSON.stringify(evalFrom(db, clause.from));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+}
+
+/* --- TEST CASE 7 --- */
+/* Full Join  */
+function testFromFullJoin(db) {
+
+  var clause = {
+    from:[
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['R'],
+          isExpr: true
+        },
+        bindTo: 'x'
+      },
+      {
+        opType: FROM_OP_TYPES.FULLJOIN,
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {
+            func: 'variable',
+            param: ['S'],
+            isExpr: true
+          },
+          bindTo: 'y'
+        },
+        on: {
+          func: 'eq',
+          param: [
+            {
+              func: 'path',
+              param: ['x', 'a'],
+              isExpr: true
+            },
+            {
+              func: 'path',
+              param: ['y', 'c'],
+              isExpr: true
+            }
+          ],
+          isExpr: true
+        }
+      }
+    ]
+  };
+
+  var expected = '[{"x":{"a":1,"b":10},"y":{"c":1,"d":20}},{"x":{"a":3,"b":30},"y":{"c":3,"d":60}},{"x":{"a":2,"b":20},"y":null},{"y":{"c":4,"d":80},"x":null}]';
+  var result = JSON.stringify(evalFrom(db, clause.from));
+
+  console.log("Expected: " + expected);
+  console.log("Actual: " + result);
+}
+
+/* WHERE */
+
+
+/* SELECT */
 function testSelectElementSingleton(db) {
 
   // SELECT ELEMENT r.a
@@ -294,12 +633,80 @@ function testSelectNoAs(db) {
 
 }
 
+/* Other tests */
+
+/* Nested query */
+function testNest1(db) {
+
+  // FROM    readings AS r
+  // SELECT  ELEMENT (
+  //   FROM    r AS {g:v}
+  //   WHERE   g = "no2"
+  //   SELECT  ATTRIBUTE g:v )
+  var clause = {
+    from: [{
+      opType: FROM_OP_TYPES.RANGE,
+      bindFrom: {func: 'variable', param: ['readings'], isExpr: true},
+      bindTo: 'r'
+    }],
+    where: true,
+    select: {
+      selectType: SEL_TYPES.ELEMENT,
+      selectExpr: {
+        func: 'swf',
+        param: [{
+          from: [{
+            opType: FROM_OP_TYPES.RANGEPAIR,
+            bindFrom: {func: 'variable', param: ['r'], isExpr: true},
+            bindTo: {attrName: 'g', attrVal: 'v'}
+          }],
+          where: {
+            func: 'eq', 
+            param: [
+              {
+                func: 'variable', 
+                param: ['g'],
+                isExpr: true
+              },
+              'no2',
+            ],
+            isExpr: true
+          },
+          select: {
+            selectType: SEL_TYPES.ATTRIBUTE,
+
+            selectAttrName: {func: 'variable', param: ['g'], isExpr: true},
+            selectAttrVal:  {func: 'variable', param: ['v'], isExpr: true}
+          }
+        }],
+        isExpr: true
+      }
+    }
+  };
+
+  var expected = '[{"no2":0.6},{"no2":0.5}]';
+  var result = JSON.stringify(swfQuery(db, clause));
+
+  console.log("Expected: " + expected);
+  console.log("Actual:   " + result);
+}
+
+testFromElement(REDB);
+testFromAttribute(READINGDB);
+testFromComma(SENSORDB);
+testFromInnerJoin(RSDB);
+testFromLeftJoin(RSDB);
+testFromRightJoin(RSDB);
+testFromFullJoin(RSDB);
+
 testSelectElementSingleton(RSTDB);
 testSelectElementObj(READINGDB);
 testSelectElementArr(READINGDB);
 testSelectAttribute(RSTDB);
 testSelectWithAs(RSTDB);
 testSelectNoAs(RSTDB);
+
+testNest1(READINGSDB);
 
 
 
