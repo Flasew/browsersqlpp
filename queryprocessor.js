@@ -225,7 +225,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
       var result = [];
 
       for(let item of bindOutputWhere) {
-        result.push(evalExprQuery(selectClause["selectExpr"], Object.assign({}, item, envir)));
+        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, item, envir)));
       }
 
       return result;
@@ -236,7 +236,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
       var result = {};
 
       for(let item of bindOutputWhere) {
-        let attrName = evalExprQuery(selectClause["selectAttrName"], Object.assign({}, item, envir));
+        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, item, envir));
 
         if(typeof(attrName) !== 'string'){
           throw {
@@ -245,7 +245,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
           };
         }
 
-        let attrVal = evalExprQuery(selectClause["selectAttrVal"],Object.assign({}, item, envir));
+        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, item, envir));
 
         result[attrName] = attrVal;
       }
@@ -255,6 +255,20 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
 
     // SELECT ..., parsed to SELECT ELEMENT first and then recursively evaluated
     case SEL_TYPES.SQLSELECT: {
+
+      // SELECT * case. the table must be homomorphic to a valid SQL table format
+      if (selectClause.selectAll) {
+        var result = [];
+        for (let t of bindOutputWhere) {
+          let newTuple = {}
+          for (let table in t) 
+            for (let col in t[table])
+              newTuple[col] = t[table][col];
+          result.push(newTuple);
+        }
+        return result;
+      }
+
       var elementReconstruct = {
         selectType: SEL_TYPES.ELEMENT,
         selectExpr: {
@@ -264,7 +278,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
         }
       };
 
-      for(let item of selectClause["selectPairs"]) {
+      for(let item of selectClause.selectPairs) {
         if(item.as === undefined){
           let lastElementIndex = item.from.param.length - 1;
 

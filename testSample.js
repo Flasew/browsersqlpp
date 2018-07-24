@@ -300,7 +300,6 @@ var clause = {
         },
         select: {
           selectType: SEL_TYPES.ATTRIBUTE,
-
           selectAttrName: {func: 'variable', param: ['g'], isExpr: true},
           selectAttrVal:  {func: 'variable', param: ['v'], isExpr: true}
         }

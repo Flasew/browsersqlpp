@@ -5,7 +5,15 @@ const READINGDB = {
     so2: [] 
   },
   cl2: [1,3,5,7,9],
-  max: 6
+};
+
+const LASTREADING = {
+  readings: [
+    {co: 2.2},
+    {co: 1.2, no2: [0.5, 2]},
+    {co: 1.8, no2: 0.7}
+  ],
+  max: 2
 };
 
 const RSTDB = {
@@ -27,7 +35,7 @@ const RSTDB = {
 };
 
 const REDB = {
-  readings: [ 1.3, 0.7, 0.3, 0.8]
+  readings: [1.3, 0.7, 0.3, 0.8]
 };
 
 const SENSORDB = {
@@ -359,11 +367,222 @@ function testFromFullJoin(db) {
   var result = JSON.stringify(evalFrom(db, clause.from));
 
   console.log("Expected: " + expected);
-  console.log("Actual: " + result);
+  console.log("Actual:   " + result);
 }
 
 /* WHERE */
+function testWhereEquiJoin(db) {
 
+  // SELECT * 
+  // FROM R AS r, S AS s,
+  // WHERE r.a = s.c
+  
+  var clause = {
+    from: [
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {func: 'variable', param: ['R'], isExpr: true},
+        bindTo: 'r'
+      },
+      {
+        opType: FROM_OP_TYPES.COMMA, 
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {func: 'variable', param: ['S'], isExpr: true},
+          bindTo: 's'
+        }
+      }
+    ],
+    where: {
+      func: 'eq',
+      param: [
+        {
+          func: 'path',
+          param: ['r', 'a'],
+          isExpr: true
+        },
+        {
+          func: 'path',
+          param: ['s', 'c'],
+          isExpr: true
+        }
+      ],
+      isExpr: true
+    },
+    select: {
+      selectType: SEL_TYPES.SQLSELECT,
+      selectAll: true 
+    }
+  };
+
+  var expected = '[{"a":2,"b":2,"c":2,"d":2},{"a":2,"b":2,"c":2,"d":1},{"a":2,"b":5,"c":2,"d":2},{"a":2,"b":5,"c":2,"d":1}]';
+  var result = JSON.stringify(swfQuery(db, clause));
+
+  console.log("Expected: " + expected);
+  console.log("Actual:   " + result);
+}
+
+function testWhereInequal(db) {
+
+  // SELECT * 
+  // FROM R AS r, S AS s,
+  // WHERE r.a < s.c
+  var clause = {
+    from: [
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {func: 'variable', param: ['R'], isExpr: true},
+        bindTo: 'r'
+      },
+      {
+        opType: FROM_OP_TYPES.COMMA, 
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {func: 'variable', param: ['S'], isExpr: true},
+          bindTo: 's'
+        }
+      }
+    ],
+    where: {
+      func: 'lt',
+      param: [
+        {
+          func: 'path',
+          param: ['r', 'a'],
+          isExpr: true
+        },
+        {
+          func: 'path',
+          param: ['s', 'c'],
+          isExpr: true
+        }
+      ],
+      isExpr: true
+    },
+    select: {
+      selectType: SEL_TYPES.SQLSELECT,
+      selectAll: true 
+    }
+  };
+
+  var expected = '[{"a":1,"b":1,"c":2,"d":2},{"a":1,"b":1,"c":2,"d":1},{"a":1,"b":1,"c":8,"d":7},{"a":2,"b":2,"c":8,"d":7},{"a":2,"b":5,"c":8,"d":7}]';
+  var result = JSON.stringify(swfQuery(db, clause));
+
+  console.log("Expected: " + expected);
+  console.log("Actual:   " + result);
+}
+
+function testWhereConjunctive(db) {
+
+  // SELECT * 
+  // FROM R as x, S as y
+  // WHERE 5 > x.b AND y.d >= 2
+  
+  var clause = {
+    from:[
+      {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['R'],
+          isExpr: true
+        },
+        bindTo: 'x'
+      },
+      {
+        opType: FROM_OP_TYPES.COMMA,
+        rhs: {
+          opType: FROM_OP_TYPES.RANGE,
+          bindFrom: {
+            func: 'variable',
+            param: ['S'],
+            isExpr: true
+          },
+          bindTo: 'y'
+        }
+      }
+    ],
+    where: {
+      func: 'and',
+      param: [
+        {
+          func: 'gt',
+          param: [
+            5,
+            {
+              func: 'path',
+              param: ['x', 'b'], 
+              isExpr: true
+            }
+          ], 
+          isExpr: true
+        },
+        {
+          func: 'gte',
+          param: [
+            {
+              func: 'path',
+              param: ['y', 'd'], 
+              isExpr: true
+            },
+            2
+          ], 
+          isExpr: true
+        }
+      ], 
+      isExpr: true
+    },
+    select: {
+      selectType: SEL_TYPES.SQLSELECT,
+      selectAll: true 
+    }
+  };
+
+  var expected = '[{"a":1,"b":1,"c":2,"d":2},{"a":1,"b":1,"c":8,"d":7},{"a":2,"b":2,"c":2,"d":2},{"a":2,"b":2,"c":8,"d":7}]';
+  var result = JSON.stringify(swfQuery(db, clause));
+
+  console.log("Expected: " + expected);
+  console.log("Actual:   " + result);
+}
+
+function testWhereMixedSrc(db) {
+  // SELECT ELEMENT r.co
+  // FROM readings AS r
+  // WHERE r.co >= max
+  
+  var clause = {
+    from: [{
+      opType: FROM_OP_TYPES.RANGE,
+      bindFrom: {func: 'variable', param: ['readings'], isExpr: true},
+      bindTo: 'r'
+    }],
+    where: {
+      func: 'gte',
+      param: [
+        {
+          func: 'path',
+          param: ['r', 'co'],
+          isExpr: true
+        },
+        {
+          func: 'variable',
+          param: ['max'],
+          isExpr: true
+        },
+      ],
+      isExpr: true
+    },
+    select: {
+      selectType: SEL_TYPES.ELEMENT,
+      selectExpr: {func: 'path', param: ['r', 'co'], isExpr: true}
+    }
+  };
+  var expected = '[2.2]';
+  var result = JSON.stringify(swfQuery(db, clause));
+
+  console.log("Expected: " + expected);
+  console.log("Actual:   " + result);
+}
 
 /* SELECT */
 function testSelectElementSingleton(db) {
@@ -674,7 +893,6 @@ function testNest1(db) {
           },
           select: {
             selectType: SEL_TYPES.ATTRIBUTE,
-
             selectAttrName: {func: 'variable', param: ['g'], isExpr: true},
             selectAttrVal:  {func: 'variable', param: ['v'], isExpr: true}
           }
@@ -699,6 +917,11 @@ testFromLeftJoin(RSDB);
 testFromRightJoin(RSDB);
 testFromFullJoin(RSDB);
 
+testWhereEquiJoin(RSTDB);
+testWhereInequal(RSTDB);
+testWhereConjunctive(RSTDB);
+testWhereMixedSrc(LASTREADING);
+
 testSelectElementSingleton(RSTDB);
 testSelectElementObj(READINGDB);
 testSelectElementArr(READINGDB);
@@ -707,6 +930,4 @@ testSelectWithAs(RSTDB);
 testSelectNoAs(RSTDB);
 
 testNest1(READINGSDB);
-
-
 
