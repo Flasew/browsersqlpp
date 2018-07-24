@@ -95,7 +95,15 @@ const EXPRESSIONS = {
 
   // nested SWF query
   swf: function(query, db) {
-    return swfQuery(db, query);
+    // console.log("SUBQUERY");
+    // console.log("query: ");
+    // console.log(query);
+    // console.log("db: ");
+    // console.log(db);
+    var result = swfQuery(db, query);
+    // console.log("Sub-query result: ");
+    // console.log(result);
+    return result;
   }
 
 };
@@ -189,6 +197,8 @@ function evalFrom(envir, fromClause){
  */
 function evalWhere(envir, bindOutputFrom, whereClause) {
 
+  // console.log("OutputFrom: ");
+  // console.log(bindOutputFrom);
   var currBind = [];
 
   for (let item of bindOutputFrom) {

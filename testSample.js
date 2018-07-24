@@ -264,3 +264,48 @@ var clause = {
   }
 }
 
+var db = {readings: [
+  { no2: 0.6, co: 0.7,     co2: [ 0.5, 2 ] },
+  { no2: 0.5, co: [ 0.4 ], co2: 1.3 }
+]};
+
+var clause = {
+  from: [{
+    opType: FROM_OP_TYPES.RANGE,
+    bindFrom: {func: 'variable', param: ['readings'], isExpr: true},
+    bindTo: 'r'
+  }],
+  where: true,
+  select: {
+    selectType: SEL_TYPES.ELEMENT,
+    selectExpr: {
+      func: 'swf',
+      param: [{
+        from: [{
+          opType: FROM_OP_TYPES.RANGEPAIR,
+          bindFrom: {func: 'variable', param: ['r'], isExpr: true},
+          bindTo: {attrName: 'g', attrVal: 'v'}
+        }],
+        where: {
+          func: 'eq', 
+          param: [
+            {
+              func: 'variable', 
+              param: ['g'],
+              isExpr: true
+            },
+            'no2',
+          ],
+          isExpr: true
+        },
+        select: {
+          selectType: SEL_TYPES.ATTRIBUTE,
+
+          selectAttrName: {func: 'variable', param: ['g'], isExpr: true},
+          selectAttrVal:  {func: 'variable', param: ['v'], isExpr: true}
+        }
+      }],
+      isExpr: true
+    }
+  }
+}
