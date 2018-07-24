@@ -29,7 +29,7 @@ const RSTDB = {
 
 function testSelectElementSingleton(db) {
 
-  // SELECT ELEMENT r.co
+  // SELECT ELEMENT r.a
   // FROM R AS r
   var clause = {
     from: [
@@ -37,7 +37,7 @@ function testSelectElementSingleton(db) {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
-          param: ['reading'],
+          param: ['R'],
           isExpr: true
         },
         bindTo: 'r'
@@ -48,13 +48,13 @@ function testSelectElementSingleton(db) {
       selectType: SEL_TYPES.ELEMENT,
       selectExpr: {
         func: 'path',
-        param: ['r', 'co'],
+        param: ['r', 'a'],
         isExpr: true
       }
     }
   };
 
-  var expected = '[0.7,[0.5,2]]';
+  var expected = '[1,2,2]';
   var result = JSON.stringify(swfQuery(db, clause));
 
   console.log("Expected: " + expected);
@@ -93,11 +93,11 @@ function testSelectElementObj(db) {
     }
   };
 
-  var expected = '[{gas:"co",val:[0.7,[0.5,2]]},{gas:"no2",val:["repair"]},{gas:"so2",val:[]}]';
+  var expected = '[{"gas":"co","val":[0.7,[0.5,2]]},{"gas":"no2","val":["repair"]},{"gas":"so2","val":[]}]';
   var result = JSON.stringify(swfQuery(db, clause));
 
   console.log("Expected: " + expected);
-  console.log("Actual: " + result);
+  console.log("Actual:   " + result);
 } 
 
 function testSelectElementArr(db) {
@@ -279,7 +279,7 @@ function testSelectNoAs(db) {
     },
     select: {
       selectType: SEL_TYPES.SQLSELECT,
-      selectPairs: [
+      selectPairs: [ 
         {from: {func: "path", param: ['x', 'b'], isExpr: true}},
         {from: {func: "path", param: ['y', 'd'], isExpr: true}}
       ]
@@ -294,7 +294,7 @@ function testSelectNoAs(db) {
 
 }
 
-testSelectElementSingleton(READINGDB);
+testSelectElementSingleton(RSTDB);
 testSelectElementObj(READINGDB);
 testSelectElementArr(READINGDB);
 testSelectAttribute(RSTDB);
