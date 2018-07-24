@@ -44,6 +44,7 @@ const EXPRESSIONS = {
   gte: (lhs, rhs) => lhs === rhs || lhs > rhs,      // >=
   and: (lhs, rhs) => lhs && rhs,                    // &&
   or:  (lhs, rhs) => lhs || rhs,                    // ||
+  not: (arg) => !arg,                               // !
 
   /* arithmetical operator */
   add: (lhs, rhs) => lhs + rhs,
@@ -90,7 +91,13 @@ const EXPRESSIONS = {
     }
 
     return result;
+  },
+
+  // nested SWF query
+  swf: function(query, db) {
+    return swfQuery(db, query);
   }
+
 };
 
 /**
