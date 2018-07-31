@@ -1,8 +1,9 @@
 grammar Sqlpp;
 
 /* Parser rules */
-
-
+swf_query
+  : select_clause from_clause (where_clause)?
+  ;
 
 select_clause
   : K_SELECT K_ELEMENT expr
@@ -25,11 +26,12 @@ from_item
   ;
 
 where_clause
-  : expr
+  : K_WHERE expr
   ;
 
 expr
-  : value                                                       // literal values
+  : '(' swf_query ')'
+  | value                                                       // literal values
   | variable                                                    // variable
   | expr '.' attr_name                                          // path
   | expr '[' expr ']'                                           // array access (TODO)
