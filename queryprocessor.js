@@ -108,10 +108,10 @@ const EXPRESSIONS = {
  * Evaluate a general query
  */
 function evalQuery(db, query) {
-  if (query.isExpr)
-    return evalExprQuery(query, db);
-  else 
+  if (query.fromClause !== undefined)
     return swfQuery(db, query);
+  return evalExprQuery(query, db);
+    
 }
 
 /**
