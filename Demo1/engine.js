@@ -52,7 +52,6 @@ const EXPRESSIONS = {
   mul: (lhs, rhs) => lhs * rhs,
   div: (lhs, rhs) => lhs / rhs,
   mod: (lhs, rhs) => lhs % rhs,
-  neg: arg => -arg,
 
   /* other */
 
@@ -60,9 +59,14 @@ const EXPRESSIONS = {
   variable: (name, envir) => envir[name],
 
   // retrieve the value of a variable located by a path 
-  path: function(expr, attr, envir) {
-    var exprResult = evalExprQuery(expr, envir);
-    return exprResult[attr];
+  path: function() {
+    var result = arguments[arguments.length - 1];
+
+    for (let i = 0; i < arguments.length - 1; i++) {
+      result = result[arguments[i]];
+    }
+
+    return result;
   },
 
   id: i => i, // identity
@@ -103,16 +107,6 @@ const EXPRESSIONS = {
   }
 
 };
-
-/**
- * Evaluate a general query
- */
-function evalQuery(db, query) {
-  if (query.isExpr)
-    return evalExprQuery(query, db);
-  else 
-    return swfQuery(db, query);
-}
 
 /**
  * Evaluate an expression query. An expression query is specified as an object
@@ -183,7 +177,15 @@ function swfQuery(db, query) {
  * @return {array}             binding tuples after the FROM clause is evaluated
  */
 function evalFrom(envir, fromClause){
-  return evalFromItem(fromClause, envir, [{}]);
+  var currBind = [{}];
+
+  // since syntax specification does not allow (), 
+  // FROM clause are evaluated from left to right.
+  for (let element of fromClause){
+    currBind = evalFromItem(element, envir, currBind);
+  }
+
+  return currBind;
 }
 
 /**
@@ -305,29 +307,29 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
  * will be evaluated based on the result of the previous output as well as 
  * other information depending on the operator type (e.g., the join operator
  * will have it's RHS as part of the information of evaluation) 
- * @param  {object} item      a from_item object specifying the op_type, data, etc.
+ * @param  {object} info      a from_item object specifying the op_type, data, etc.
  * @param  {object} envir     environment of the execution
  * @param  {array}  bindTuple binding tuples that's already been evaluated
  * @return {array}            binding tuple after the from_item being evaluated
  */
-function evalFromItem(fromItem, envir, bindTuple) {
+function evalFromItem(info, envir, bindTuple) {
 
   var newBind = [];
 
-  switch (fromItem.opType) {
+  switch (info.opType) {
 
     // "RANGE over" operator (line 4)
     case FROM_OP_TYPES.RANGE: {
 
-      var bindTo = fromItem.bindTo;
-      var bindFrom = evalExprQuery(fromItem.bindFrom, envir);
+      var bindTo = info.bindTo;
+      var bindFrom = evalExprQuery(info.bindFrom, envir);
 
       // Range over collection elements: AS var (AT var)
       if (!Array.isArray(bindFrom)) {
         bindFrom = [bindFrom];
       }
 
-      let pivot = fromItem.at;
+      let pivot = info.at;
       let pivotIndex = 1;
 
       // case of lhs of AS belongs to environment.
@@ -351,8 +353,8 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
     // RANGE over an name:value pair (line 5)
     case FROM_OP_TYPES.RANGEPAIR: {
-      var bindTo = fromItem.bindTo;
-      var bindFrom = evalExprQuery(fromItem.bindFrom, envir);
+      var bindTo = info.bindTo;
+      var bindFrom = evalExprQuery(info.bindFrom, envir);
 
       // RANGE over tuple attributes: AS {var : var}
       if (typeof(bindFrom) !== 'object' && Array.isArray(bindFrom))
@@ -382,12 +384,9 @@ function evalFromItem(fromItem, envir, bindTuple) {
     // "COMMA" operator representing Cartesian product (flatten also allowed)
     case FROM_OP_TYPES.COMMA: {
 
-      bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
-
       for (let item of bindTuple) {
 
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
-
+        let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
           newBind.push(newTuple);
@@ -400,16 +399,14 @@ function evalFromItem(fromItem, envir, bindTuple) {
     // inner join operator, same as SQL inner join (mostly theta join)
     case FROM_OP_TYPES.INNERJOIN: {
 
-      bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
-
       for (let item of bindTuple) {
 
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
 
-          if (evalExprQuery(fromItem.on, newTuple)) 
+          if (evalExprQuery(info.on, newTuple)) 
             newBind.push(newTuple);
 
         }
@@ -421,19 +418,17 @@ function evalFromItem(fromItem, envir, bindTuple) {
     // left join operator same as SQL LEFT OUTER JOIN
     case FROM_OP_TYPES.LEFTJOIN: {
 
-      bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
-
       let leftincluded = Array(bindTuple.length).fill(false);
 
       for (let i = 0; i < bindTuple.length; i++) {
 
         let item = bindTuple[i];
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(info.rhs, Object.assign({}, item, envir), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
 
-          if (evalExprQuery(fromItem.on, newTuple)) {
+          if (evalExprQuery(info.on, newTuple)) {
             newBind.push(newTuple);
             leftincluded[i] = true;
           }
@@ -443,7 +438,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
       for (let i = 0; i < leftincluded.length; i++) {
         if (!leftincluded[i]) {
           let newTuple = Object.assign({}, bindTuple[i]);
-          newTuple[fromItem.rhs.bindTo] = null;
+          newTuple[info.rhs.bindTo] = null;
           newBind.push(newTuple);
         }
       }
@@ -454,9 +449,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
     // right join operator. Notice the RHS cannot contain var from LHS.
     case FROM_OP_TYPES.RIGHTJOIN: {
 
-      bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
-
-      let rightBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir), [{}]);
+      let rightBindResult = evalFromItem(info.rhs, Object.assign({}, envir), [{}]);
       let rightincluded = Array(rightBindResult.length).fill(false);
 
       for (let i = 0; i < rightBindResult.length; i++) {
@@ -466,7 +459,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
         for (let btup of bindTuple) {
           let newTuple = Object.assign({}, item, btup);
 
-          if (evalExprQuery(fromItem.on, newTuple)) {
+          if (evalExprQuery(info.on, newTuple)) {
             newBind.push(newTuple);
             rightincluded[i] = true;
           }
@@ -491,10 +484,8 @@ function evalFromItem(fromItem, envir, bindTuple) {
     case FROM_OP_TYPES.FULLJOIN: case FROM_OP_TYPES.FULLCORR: {
     // full join and full correlate are identical. lhs and rhs cannot use
     // variable defined on the other side.
-    
-      bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
 
-      let rightBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir), [{}]);
+      let rightBindResult = evalFromItem(info.rhs, Object.assign({}, envir), [{}]);
       let leftincluded = Array(bindTuple.length).fill(false);
       let rightincluded = Array(rightBindResult.length).fill(false);
 
@@ -503,7 +494,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
           
           let newTuple = Object.assign({}, bindTuple[i], rightBindResult[j]);
 
-          if (evalExprQuery(fromItem.on, newTuple)) {
+          if (evalExprQuery(info.on, newTuple)) {
             newBind.push(newTuple);
             leftincluded[i] = true;
             rightincluded[j] = true;
@@ -515,7 +506,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
         if (!leftincluded[i]) {
           let newTuple = Object.assign({}, bindTuple[i]);
-          newTuple[fromItem.rhs.bindTo] = null;
+          newTuple[info.rhs.bindTo] = null;
           newBind.push(newTuple);
         }
 
@@ -544,3 +535,26 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
 
 
+var envir = document.getElementById("DB");
+var tree = document.getElementById("AST");
+var button = document.getElementById("BUTTON");
+
+var fromArea = document.getElementById("FROM");
+var whereArea = document.getElementById("WHERE");
+var selectArea = document.getElementById("SELECT");
+
+button.addEventListener("click", function(){
+  var db = JSON.parse(envir.value);
+  var clause = JSON.parse(tree.value);
+
+  var outputFrom = evalFrom(db, clause.from);
+  fromArea.innerHTML = JSON.stringify(outputFrom);
+
+  var outputWhere = evalWhere(db, outputFrom, clause.where);
+  whereArea.innerHTML = JSON.stringify(outputWhere);
+
+  var outputSelect = evalSelect(db, outputWhere, clause.select);
+  selectArea.innerHTML = JSON.stringify(outputSelect);
+
+  //console.log(outputSelect);
+});

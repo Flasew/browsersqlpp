@@ -72,17 +72,15 @@ const READINGSDB = {readings: [
 function testFromElement(db) {
 
   var clause = {
-    from: [
-      {
-        opType: FROM_OP_TYPES.RANGE,
-        bindFrom: {
-          func: 'variable',
-          param: ['readings'],
-          isExpr: true
-        },
-        bindTo: 'r'
-      }
-    ]
+    from: {
+      opType: FROM_OP_TYPES.RANGE,
+      bindFrom: {
+        func: 'variable',
+        param: ['readings'],
+        isExpr: true
+      },
+      bindTo: 'r'
+    }
   };
 
   var expected = '[{"r":1.3},{"r":0.7},{"r":0.3},{"r":0.8}]';
@@ -97,20 +95,18 @@ function testFromElement(db) {
 function testFromAttribute(db) {
 
   var clause = {
-    from: [
-      {
-        opType: FROM_OP_TYPES.RANGEPAIR,
-        bindFrom: {
-          func: 'variable',
-          param: ['reading'],
-          isExpr: true
-        },
-        bindTo: {
-          attrName: 'g', 
-          attrVal: 'v'
-        }
+    from: {
+      opType: FROM_OP_TYPES.RANGEPAIR,
+      bindFrom: {
+        func: 'variable',
+        param: ['reading'],
+        isExpr: true
+      },
+      bindTo: {
+        attrName: 'g', 
+        attrVal: 'v'
       }
-    ],
+    }
   };
 
   var expected = '[{"g":"co","v":[0.7,[0.5,2]]},{"g":"no2","v":["repair"]},{"g":"so2","v":[]}]';
@@ -125,8 +121,9 @@ function testFromAttribute(db) {
 function testFromComma(db) {
 
   var clause = {
-    from:[
-      {
+    from: {
+      opType: FROM_OP_TYPES.COMMA,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -135,19 +132,16 @@ function testFromComma(db) {
         },
         bindTo: 's'
       },
-      {
-        opType: FROM_OP_TYPES.COMMA,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['s'],
-            isExpr: true
-          },
-          bindTo: 'r'
-        }
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['s'],
+          isExpr: true
+        },
+        bindTo: 'r'
       }
-    ]
+    }
   };
 
   var expected = '[{"s":[1.3,2],"r":1.3},{"s":[1.3,2],"r":2},{"s":[0.7,0.7,0.9],"r":0.7},{"s":[0.7,0.7,0.9],"r":0.7},{"s":[0.7,0.7,0.9],"r":0.9},{"s":[0.3,0.8,1.1],"r":0.3},{"s":[0.3,0.8,1.1],"r":0.8},{"s":[0.3,0.8,1.1],"r":1.1},{"s":[0.7,1.4],"r":0.7},{"s":[0.7,1.4],"r":1.4}]';
@@ -163,8 +157,9 @@ function testFromComma(db) {
 function testFromInnerJoin(db) {
 
   var clause = {
-    from:[
-      {
+    from: {
+      opType: FROM_OP_TYPES.INNERJOIN,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -173,35 +168,32 @@ function testFromInnerJoin(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.INNERJOIN,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
+      },
+      on: {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'a'],
             isExpr: true
           },
-          bindTo: 'y'
-        },
-        on: {
-          func: 'eq',
-          param: [
-            {
-              func: 'path',
-              param: ['x', 'a'],
-              isExpr: true
-            },
-            {
-              func: 'path',
-              param: ['y', 'c'],
-              isExpr: true
-            }
-          ],
-          isExpr: true
-        }
+          {
+            func: 'path',
+            param: ['y', 'c'],
+            isExpr: true
+          }
+        ],
+        isExpr: true
       }
-    ]
+    }
   };
 
   var expected = '[{"x":{"a":1,"b":10},"y":{"c":1,"d":20}},{"x":{"a":3,"b":30},"y":{"c":3,"d":60}}]';
@@ -216,8 +208,9 @@ function testFromInnerJoin(db) {
 function testFromLeftJoin(db) {
 
   var clause = {
-    from:[
-      {
+    from: {
+      opType: FROM_OP_TYPES.LEFTJOIN,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -226,35 +219,32 @@ function testFromLeftJoin(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.LEFTJOIN,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
+      },
+      on: {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'a'],
             isExpr: true
           },
-          bindTo: 'y'
-        },
-        on: {
-          func: 'eq',
-          param: [
-            {
-              func: 'path',
-              param: ['x', 'a'],
-              isExpr: true
-            },
-            {
-              func: 'path',
-              param: ['y', 'c'],
-              isExpr: true
-            }
-          ],
-          isExpr: true
-        }
+          {
+            func: 'path',
+            param: ['y', 'c'],
+            isExpr: true
+          }
+        ],
+        isExpr: true
       }
-    ]
+    }
   };
 
   var expected = '[{"x":{"a":1,"b":10},"y":{"c":1,"d":20}},{"x":{"a":3,"b":30},"y":{"c":3,"d":60}},{"x":{"a":2,"b":20},"y":null}]';
@@ -269,8 +259,9 @@ function testFromLeftJoin(db) {
 function testFromRightJoin(db) {
 
   var clause = {
-    from:[
-      {
+    from: {
+      opType: FROM_OP_TYPES.RIGHTJOIN,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -279,35 +270,32 @@ function testFromRightJoin(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.RIGHTJOIN,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
+      },
+      on: {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'a'],
             isExpr: true
           },
-          bindTo: 'y'
-        },
-        on: {
-          func: 'eq',
-          param: [
-            {
-              func: 'path',
-              param: ['x', 'a'],
-              isExpr: true
-            },
-            {
-              func: 'path',
-              param: ['y', 'c'],
-              isExpr: true
-            }
-          ],
-          isExpr: true
-        }
+          {
+            func: 'path',
+            param: ['y', 'c'],
+            isExpr: true
+          }
+        ],
+        isExpr: true
       }
-    ]
+    }
   };
 
   var expected = '[{"y":{"c":3,"d":60},"x":{"a":3,"b":30}},{"y":{"c":1,"d":20},"x":{"a":1,"b":10}},{"y":{"c":4,"d":80},"x":null}]';
@@ -322,8 +310,9 @@ function testFromRightJoin(db) {
 function testFromFullJoin(db) {
 
   var clause = {
-    from:[
-      {
+    from: {
+      opType: FROM_OP_TYPES.FULLJOIN,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -332,35 +321,32 @@ function testFromFullJoin(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.FULLJOIN,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
+      },
+      on: {
+        func: 'eq',
+        param: [
+          {
+            func: 'path',
+            param: ['x', 'a'],
             isExpr: true
           },
-          bindTo: 'y'
-        },
-        on: {
-          func: 'eq',
-          param: [
-            {
-              func: 'path',
-              param: ['x', 'a'],
-              isExpr: true
-            },
-            {
-              func: 'path',
-              param: ['y', 'c'],
-              isExpr: true
-            }
-          ],
-          isExpr: true
-        }
+          {
+            func: 'path',
+            param: ['y', 'c'],
+            isExpr: true
+          }
+        ],
+        isExpr: true
       }
-    ]
+    }
   };
 
   var expected = '[{"x":{"a":1,"b":10},"y":{"c":1,"d":20}},{"x":{"a":3,"b":30},"y":{"c":3,"d":60}},{"x":{"a":2,"b":20},"y":null},{"y":{"c":4,"d":80},"x":null}]';
@@ -378,21 +364,19 @@ function testWhereEquiJoin(db) {
   // WHERE r.a = s.c
   
   var clause = {
-    from: [
-      {
+    from: {
+      opType: FROM_OP_TYPES.COMMA, 
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {func: 'variable', param: ['R'], isExpr: true},
         bindTo: 'r'
       },
-      {
-        opType: FROM_OP_TYPES.COMMA, 
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {func: 'variable', param: ['S'], isExpr: true},
-          bindTo: 's'
-        }
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {func: 'variable', param: ['S'], isExpr: true},
+        bindTo: 's'
       }
-    ],
+    },
     where: {
       func: 'eq',
       param: [
@@ -428,21 +412,19 @@ function testWhereInequal(db) {
   // FROM R AS r, S AS s,
   // WHERE r.a < s.c
   var clause = {
-    from: [
-      {
+    from: {
+      opType: FROM_OP_TYPES.COMMA, 
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {func: 'variable', param: ['R'], isExpr: true},
         bindTo: 'r'
       },
-      {
-        opType: FROM_OP_TYPES.COMMA, 
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {func: 'variable', param: ['S'], isExpr: true},
-          bindTo: 's'
-        }
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {func: 'variable', param: ['S'], isExpr: true},
+        bindTo: 's'
       }
-    ],
+    },
     where: {
       func: 'lt',
       param: [
@@ -479,8 +461,9 @@ function testWhereConjunctive(db) {
   // WHERE 5 > x.b AND y.d >= 2
   
   var clause = {
-    from:[
-      {
+    from: {
+      opType: FROM_OP_TYPES.COMMA,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -489,19 +472,16 @@ function testWhereConjunctive(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.COMMA,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
-            isExpr: true
-          },
-          bindTo: 'y'
-        }
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
       }
-    ],
+    },
     where: {
       func: 'and',
       param: [
@@ -551,11 +531,11 @@ function testWhereMixedSrc(db) {
   // WHERE r.co >= max
   
   var clause = {
-    from: [{
+    from: {
       opType: FROM_OP_TYPES.RANGE,
       bindFrom: {func: 'variable', param: ['readings'], isExpr: true},
       bindTo: 'r'
-    }],
+    },
     where: {
       func: 'gte',
       param: [
@@ -590,17 +570,15 @@ function testSelectElementSingleton(db) {
   // SELECT ELEMENT r.a
   // FROM R AS r
   var clause = {
-    from: [
-      {
-        opType: FROM_OP_TYPES.RANGE,
-        bindFrom: {
-          func: 'variable',
-          param: ['R'],
-          isExpr: true
-        },
-        bindTo: 'r'
-      }
-    ],
+    from: {
+      opType: FROM_OP_TYPES.RANGE,
+      bindFrom: {
+        func: 'variable',
+        param: ['R'],
+        isExpr: true
+      },
+      bindTo: 'r'
+    },
     where: true,
     select: {
       selectType: SEL_TYPES.ELEMENT,
@@ -623,20 +601,18 @@ function testSelectElementObj(db) {
   // SELECT ELEMENT {gas: g, val: v}
   // FROM reading AS {g: v}
   var clause = {
-    from: [
-      {
-        opType: FROM_OP_TYPES.RANGEPAIR,
-        bindFrom: {
-          func: 'variable',
-          param: ['reading'],
-          isExpr: true
-        },
-        bindTo: {
-          attrName: 'g', 
-          attrVal:  'v'
-        }
+    from: {
+      opType: FROM_OP_TYPES.RANGEPAIR,
+      bindFrom: {
+        func: 'variable',
+        param: ['reading'],
+        isExpr: true
+      },
+      bindTo: {
+        attrName: 'g', 
+        attrVal:  'v'
       }
-    ],
+    },
     where: true,
     select: {
       selectType: SEL_TYPES.ELEMENT,
@@ -663,20 +639,18 @@ function testSelectElementArr(db) {
   // SELECT ELEMENT [g, v]
   // FROM reading AS {g: v}
   var clause = {
-    from: [
-      {
-        opType: FROM_OP_TYPES.RANGEPAIR,
-        bindFrom: {
-          func: 'variable',
-          param: ['reading'],
-          isExpr: true
-        },
-        bindTo: {
-          attrName: 'g', 
-          attrVal:  'v'
-        }
+    from: {
+      opType: FROM_OP_TYPES.RANGEPAIR,
+      bindFrom: {
+        func: 'variable',
+        param: ['reading'],
+        isExpr: true
+      },
+      bindTo: {
+        attrName: 'g', 
+        attrVal:  'v'
       }
-    ],
+    },
     where: true,
     select: {
       selectType: SEL_TYPES.ELEMENT,
@@ -702,17 +676,15 @@ function testSelectAttribute(db) {
   // SELECT ATTRIBUTE t.e: t.f
   // FROM T as t
   var clause = {
-    from: [
-      {
-        opType: FROM_OP_TYPES.RANGE,
-        bindFrom: {
-          func: 'variable',
-          param: ['T'],
-          isExpr: true
-        },
-        bindTo: 't'
-      }
-    ],
+    from: {
+      opType: FROM_OP_TYPES.RANGE,
+      bindFrom: {
+        func: 'variable',
+        param: ['T'],
+        isExpr: true
+      },
+      bindTo: 't'
+    },
     where: true,
     select: {
       selectType: SEL_TYPES.ATTRIBUTE,
@@ -721,7 +693,7 @@ function testSelectAttribute(db) {
     }
   };
 
-  var expected = '{"1st":1},{"2nd":2},{"3rd":3}';
+  var expected = '{"1st":1,"2nd":2,"3rd":3}';
   var result = JSON.stringify(swfQuery(db, clause));
 
   console.log("Expected: " + expected);
@@ -733,8 +705,9 @@ function testSelectWithAs(db) {
   // FROM R as x, S as y
   // WHERE x.a < y.c
   var clause = {
-    from: [
-      {
+    from: {
+      opType: FROM_OP_TYPES.COMMA,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -743,19 +716,16 @@ function testSelectWithAs(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.COMMA,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
-            isExpr: true
-          },
-          bindTo: 'y'
-        }
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
       }
-    ],
+    },
     where: {
       func: 'lt',
       param: [
@@ -796,8 +766,9 @@ function testSelectNoAs(db) {
   // FROM R as x, S as y
   // WHERE x.a = y.c
   var clause = {
-    from: [
-      {
+    from: {
+      opType: FROM_OP_TYPES.COMMA,
+      lhs: {
         opType: FROM_OP_TYPES.RANGE,
         bindFrom: {
           func: 'variable',
@@ -806,19 +777,16 @@ function testSelectNoAs(db) {
         },
         bindTo: 'x'
       },
-      {
-        opType: FROM_OP_TYPES.COMMA,
-        rhs: {
-          opType: FROM_OP_TYPES.RANGE,
-          bindFrom: {
-            func: 'variable',
-            param: ['S'],
-            isExpr: true
-          },
-          bindTo: 'y'
-        }
+      rhs: {
+        opType: FROM_OP_TYPES.RANGE,
+        bindFrom: {
+          func: 'variable',
+          param: ['S'],
+          isExpr: true
+        },
+        bindTo: 'y'
       }
-    ],
+    },
     where: {
       func: 'eq',
       param: [
@@ -863,22 +831,22 @@ function testNest1(db) {
   //   WHERE   g = "no2"
   //   SELECT  ATTRIBUTE g:v )
   var clause = {
-    from: [{
+    from: {
       opType: FROM_OP_TYPES.RANGE,
       bindFrom: {func: 'variable', param: ['readings'], isExpr: true},
       bindTo: 'r'
-    }],
+    },
     where: true,
     select: {
       selectType: SEL_TYPES.ELEMENT,
       selectExpr: {
         func: 'swf',
         param: [{
-          from: [{
+          from: {
             opType: FROM_OP_TYPES.RANGEPAIR,
             bindFrom: {func: 'variable', param: ['r'], isExpr: true},
             bindTo: {attrName: 'g', attrVal: 'v'}
-          }],
+          },
           where: {
             func: 'eq', 
             param: [
