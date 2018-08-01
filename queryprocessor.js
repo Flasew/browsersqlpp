@@ -109,6 +109,16 @@ const EXPRESSIONS = {
 };
 
 /**
+ * Evaluate a general query
+ */
+function evalQuery(db, query) {
+  if (query.isExpr)
+    return evalExprQuery(query, db);
+  else 
+    return swfQuery(db, query);
+}
+
+/**
  * Evaluate an expression query. An expression query is specified as an object
  * in the following format: {func: <string>, param: <array>, isExpr: true}
  * otherwise the expression is treated as an identity and itself will be returned. 
