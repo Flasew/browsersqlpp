@@ -32,7 +32,7 @@ SqlppVisitor.prototype.visitSwf_query = function(ctx) {
 SqlppVisitor.prototype.visitSelElement = function(ctx) {
   return {
     selectType: 0, // SEL_TYPES.ELEMENT,
-    selectExpr: this.visit(ctx.expr());
+    selectExpr: this.visit(ctx.expr())
   };
 };
 
@@ -42,7 +42,7 @@ SqlppVisitor.prototype.visitSelAttr = function(ctx) {
   return {
     selectType: 2, // SEL_TYPES.ATTRIBUTE,
     selectAttrName: this.visit(ctx.attrname),
-    selectAttrVal:  this.visit(ctx.attrval);
+    selectAttrVal:  this.visit(ctx.attrval)
   };
 };
 
@@ -141,7 +141,7 @@ SqlppVisitor.prototype.visitFromFull = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#FromComma.
 SqlppVisitor.prototype.visitFromComma = function(ctx) {
-  return return {
+  return {
     opType: 1,
     lhs: this.visit(ctx.lhs),
     rhs: this.visit(ctx.rhs)
@@ -170,7 +170,10 @@ SqlppVisitor.prototype.visitExprBag = function(ctx) { // TODO
 // Visit a parse tree produced by SqlppParser#ExprBinary.
 SqlppVisitor.prototype.visitExprBinary = function(ctx) {
   var result = {isExpr: true};
-  switch (ctx.op.getText().toLowerCase()) {
+  
+  //ctx.op.getInputStream().getText(ctx.op.start, ctx.op.stop)
+
+  switch (ctx.op.text.toLowerCase()) {
     case '||' :   result.func = 'concat'; break;
     case '*'  :   result.func = 'mul';    break;
     case '/'  :   result.func = 'div';    break;
@@ -187,6 +190,10 @@ SqlppVisitor.prototype.visitExprBinary = function(ctx) {
     case '<>' :   result.func = 'neq';    break;
     case 'and':   result.func = 'and';    break;
     case 'or' :   result.func = 'or' ;    break;
+    default: throw {
+      name: 'WORNG',
+      Message: ctx.op.getInputStream().getText().toLowerCase()
+    };
   }
 
   result.param = [];
