@@ -14,7 +14,8 @@ SqlppVisitor.prototype.constructor = SqlppVisitor;
 
 // Visit a parse tree produced by SqlppParser#query.
 SqlppVisitor.prototype.visitQuery = function(ctx) {
-  return this.visit(ctx);
+  if (ctx.expr() !== null) return this.visit(ctx.expr());
+  else                     return this.visit(ctx.swf_query());
 };
 
 
@@ -62,7 +63,7 @@ SqlppVisitor.prototype.visitFrom_clause = function(ctx) {
 // Visit a parse tree produced by SqlppParser#FromILCorr.
 SqlppVisitor.prototype.visitFromILCorr = function(ctx) {
 
-  var op = ctx.op.getText().toLowerCase();
+  var op = ctx.op.text.toLowerCase();
 
   if (op === 'inner')   op = 6;
   else                  op = 7;
@@ -81,7 +82,7 @@ SqlppVisitor.prototype.visitFromJoin = function(ctx) {
 
   var op;
   
-  switch(ctx.op.getText().toLowerCase()) {
+  switch(ctx.op.text.toLowerCase()) {
     case 'inner': op = 2; break;
     case 'left' : op = 3; break;
     case 'right': op = 4; break;
@@ -192,7 +193,7 @@ SqlppVisitor.prototype.visitExprBinary = function(ctx) {
     case 'or' :   result.func = 'or' ;    break;
     default: throw {
       name: 'WORNG',
-      Message: ctx.op.getInputStream().getText().toLowerCase()
+      Message: ctx.op.text.toLowerCase()
     };
   }
 
@@ -218,9 +219,13 @@ SqlppVisitor.prototype.visitExprUnary = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprFunc.
+// TODO Visit a parse tree produced by SqlppParser#ExprFunc.
 SqlppVisitor.prototype.visitExprFunc = function(ctx) {
-  return this.visitChildren(ctx);
+  // return {
+  //   func: ctx.func_name().getText(),
+  //   param: [],
+  //   isExpr: true
+  // };
 };
 
 
