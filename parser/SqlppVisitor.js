@@ -5,8 +5,8 @@ var antlr4 = require('antlr4/index');
 // This class defines a complete generic visitor for a parse tree produced by SqlppParser.
 
 function SqlppVisitor() {
-	antlr4.tree.ParseTreeVisitor.call(this);
-	return this;
+  antlr4.tree.ParseTreeVisitor.call(this);
+  return this;
 }
 
 SqlppVisitor.prototype = Object.create(antlr4.tree.ParseTreeVisitor.prototype);
@@ -48,9 +48,32 @@ SqlppVisitor.prototype.visitSelAttr = function(ctx) {
 };
 
 
-// TODO: Visit a parse tree produced by SqlppParser#SQLSel.
+// Visit a parse tree produced by SqlppParser#SQLSel.
+// TODO: select *
 SqlppVisitor.prototype.visitSQLSel = function(ctx) {
-  return this.visitChildren(ctx);
+
+  var result = {selectType: 3, selectPairs:[]};
+  var resultPos = 0;
+
+  for (var i = 0; i < ctx.children.length; i++) {
+    
+    if (ctx.children[i].getText().toLowerCase() === ',' 
+      || ctx.children[i].getText().toLowerCase() === 'select') 
+      continue;
+
+    result[resultPos] = {
+      from: this.visit(ctx.children[i++])
+    };
+
+    if (ctx.children[i].getText().toLowerCase() === 'as')
+      result[resultPos].as = ctx.children[++i].getText();
+
+    resultPos++;
+  }
+  // console.log('sqlsel');
+  // console.log(ctx.expr());
+  // console.log(ctx.attr_name());
+  return result;
 };
 
 
@@ -158,7 +181,16 @@ SqlppVisitor.prototype.visitWhere_clause = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprObj.
 SqlppVisitor.prototype.visitExprObj = function(ctx) {
-  return this.visitChildren(ctx);
+  var result = {func: 'obj', param: [], isExpr: true};
+
+  for (let i = 0; i < ctx.expr().length; i++) {
+    result.param[i] = {
+      attrName: ((ctx.attr_name())[i]).getText(),
+      attrVal:  this.visit(ctx.expr()[i])
+    };
+  }
+
+  return result;
 };
 
 
@@ -209,7 +241,7 @@ SqlppVisitor.prototype.visitExprBinary = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprNestSWF.
 SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
-  return this.visitChildren(ctx);
+  return this.visit(ctx.swf_query());
 };
 
 
@@ -219,13 +251,15 @@ SqlppVisitor.prototype.visitExprUnary = function(ctx) {
 };
 
 
-// TODO Visit a parse tree produced by SqlppParser#ExprFunc.
+// Visit a parse tree produced by SqlppParser#ExprFunc.
 SqlppVisitor.prototype.visitExprFunc = function(ctx) {
-  // return {
-  //   func: ctx.func_name().getText(),
-  //   param: [],
-  //   isExpr: true
-  // };
+  var result = {func: ctx.func_name().getText(), param: [], isExpr: true};
+
+  for (let i = 0; i < ctx.expr().length; i++) {
+    result.param[i] = this.visit(ctx.expr()[i]);
+  }
+
+  return result;
 };
 
 
@@ -245,7 +279,7 @@ SqlppVisitor.prototype.visitExprVari = function(ctx) {
 };
 
 
-// TODO: Visit a parse tree produced by SqlppParser#ExprPath.
+// Visit a parse tree produced by SqlppParser#ExprPath.
 SqlppVisitor.prototype.visitExprPath = function(ctx) {
   return {
     func: 'path',
@@ -260,13 +294,24 @@ SqlppVisitor.prototype.visitExprPath = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprVal.
 SqlppVisitor.prototype.visitExprVal = function(ctx) {
-  return ctx.value().STRLITERAL() !== null ? ctx.value().STRLITERAL().getText() : Number(ctx.value().NUMBER().getText());
+  if (ctx.value().STRLITERAL() !== null) {
+    var quotedtext = ctx.value().STRLITERAL().getText();
+    return quotedtext.substring(1, quotedtext.length - 1);
+  }
+
+  return Number(ctx.value().NUMBER().getText());
 };
 
 
 // Visit a parse tree produced by SqlppParser#ExprArr.
 SqlppVisitor.prototype.visitExprArr = function(ctx) {
-  return this.visitChildren(ctx);
+  var result = {func: 'arr', param: [], isExpr: true};
+
+  for (let i = 0; i < ctx.expr().length; i++) {
+    result.param[i] = this.visit(ctx.expr()[i]);
+  }
+
+  return result;
 };
 
 
