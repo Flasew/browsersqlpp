@@ -52,6 +52,7 @@ const EXPRESSIONS = {
   mul: (lhs, rhs) => lhs * rhs,
   div: (lhs, rhs) => lhs / rhs,
   mod: (lhs, rhs) => lhs % rhs,
+  neg: arg => -arg,
 
   /* other */
 
@@ -59,14 +60,9 @@ const EXPRESSIONS = {
   variable: (name, envir) => envir[name],
 
   // retrieve the value of a variable located by a path 
-  path: function() {
-    var result = arguments[arguments.length - 1];
-
-    for (let i = 0; i < arguments.length - 1; i++) {
-      result = result[arguments[i]];
-    }
-
-    return result;
+  path: function(expr, attr, envir) {
+    var exprResult = evalExprQuery(expr, envir);
+    return exprResult[attr];
   },
 
   id: i => i, // identity
@@ -107,6 +103,16 @@ const EXPRESSIONS = {
   }
 
 };
+
+/**
+ * Evaluate a general query
+ */
+function evalQuery(db, query) {
+  if (query.isExpr)
+    return evalExprQuery(query, db);
+  else 
+    return swfQuery(db, query);
+}
 
 /**
  * Evaluate an expression query. An expression query is specified as an object

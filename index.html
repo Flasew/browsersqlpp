@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="text/javascript" src="lib/require.js"></script>
+
+</head>
+
+<body>
+<h2>12321</h2>
+
+<script type="text/javascript">
+    console.log("1233333333");
+
+    self.require = Tarp.require;
+    var antlr4 = require('/sql/node_modules/antlr4/index');
+    var SqlppLexer = require('/sql/parser/SqlppLexer').SqlppLexer;
+    var SqlppParser = require('/sql/parser/SqlppParser').SqlppParser;
+    //var SqlppListener = require('/sql/parser/SqlppListener').SqlppListener;
+    var SqlppVisitor = require('/sql/parser/SqlppVisitor').SqlppVisitor;
+
+    var input = "SELECT  ELEMENT (SELECT  ATTRIBUTE g:v FROM r AS {g:v} WHERE g = 'no2') FROM readings AS r";
+
+    var chars = new antlr4.InputStream(input);
+    var lexer = new SqlppLexer(chars);
+    var tokens  = new antlr4.CommonTokenStream(lexer);
+    var parser = new SqlppParser(tokens);
+    parser.buildParseTrees = true;
+    var tree = parser.query();
+    console.log(tree);
+
+    var visitor = new SqlppVisitor();
+    var ast = visitor.visit(tree);
+    console.log(ast);
+
+    //var listener = new SqlppListener();
+    //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
+  </script>
+</body>
+
+</html>

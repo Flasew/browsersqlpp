@@ -1,14 +1,19 @@
 grammar Sqlpp;
 
 /* Parser rules */
+query
+  : expr       
+  | swf_query   
+  ;
+
 swf_query
   : select_clause from_clause (where_clause)?
   ;
 
 select_clause
-  : K_SELECT K_ELEMENT expr
-  | K_SELECT K_ATTRIBUTE expr ':' expr
-  | K_SELECT expr (K_AS attr_name)? (',' expr (K_AS attr_name)?)*
+  : K_SELECT K_ELEMENT expr                                         #SelElement
+  | K_SELECT K_ATTRIBUTE attrname=expr ':' attrval=expr             #SelAttr
+  | K_SELECT expr (K_AS attr_name)? (',' expr (K_AS attr_name)?)*   #SQLSel
   ;
 
 from_clause
@@ -16,13 +21,13 @@ from_clause
   ;
 
 from_item
-  : expr K_AS variable (K_AT variable)?
-  | expr K_AS '{' variable ':' variable '}'
-  | from_item (K_INNER | K_LEFT K_OUTER?) K_CORRELATE? from_item
-  | from_item K_FULL K_OUTER? K_CORRELATE? from_item K_ON expr
-  | from_item ',' from_item
-  | from_item (K_INNER | K_LEFT | K_RIGHT | K_FULL) K_JOIN from_item K_ON expr
-  | (K_INNER | K_OUTER) K_FLATTEN '(' expr K_AS variable ',' expr K_AS variable ')'
+  : expr K_AS asvar=variable (K_AT atvar=variable)?                                           #FromRange
+  | expr K_AS '{' attrname=variable ':' attrval=variable '}'                                  #FromRangePair
+  | lhs=from_item (op=K_INNER | op=K_LEFT K_OUTER?) K_CORRELATE?    rhs=from_item             #FromILCorr
+  | lhs=from_item op=K_FULL K_OUTER? K_CORRELATE?                   rhs=from_item K_ON expr   #FromFull
+  | lhs=from_item op=','                                            rhs=from_item             #FromComma
+  | lhs=from_item op=(K_INNER | K_LEFT | K_RIGHT | K_FULL) K_JOIN   rhs=from_item K_ON expr   #FromJoin
+  | (K_INNER | K_OUTER) K_FLATTEN '(' lexpr=expr K_AS lvar=variable ',' rexpr=expr K_AS rvar=variable ')'           #FromFlatten
   ;
 
 where_clause
@@ -30,24 +35,24 @@ where_clause
   ;
 
 expr
-  : '(' swf_query ')'
-  | value                                                       // literal values
-  | variable                                                    // variable
-  | expr '.' attr_name                                          // path
-  | expr '[' expr ']'                                           // array access (TODO)
-  | unary_op expr                                               // operators & function call
-  | expr '||' expr
-  | expr ( '*' | '/' | '%' ) expr
-  | expr ( '+' | '-' ) expr
-  | expr ( '<' | '<=' | '>' | '>=' ) expr
-  | expr ( '=' | '==' | '!=' | '<>' ) expr
-  | expr K_AND expr
-  | expr K_OR expr
-  | func_name '(' expr? (',' expr)* ')'
-  | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'     // object 
-  | '[' expr? (',' expr)* ']'                                   // array
-  | '{{' expr? (',' expr)* '}}'                                 // bag (TODO)
-  | '(' expr ')'
+  : '(' swf_query ')'                                           #ExprNestSWF    // Nested query
+  | value                                                       #ExprVal        // literal values
+  | variable                                                    #ExprVari       // variable
+  | expr '.' attr_name                                          #ExprPath       // path
+  | expr '[' expr ']'                                           #ExprArrAcs     // array access (TODO)
+  | unary_op expr                                               #ExprUnary      // operators & function call
+  | lhs=expr op='||'                         rhs=expr           #ExprBinary
+  | lhs=expr op=( '*' | '/' | '%' )          rhs=expr           #ExprBinary
+  | lhs=expr op=( '+' | '-' )                rhs=expr           #ExprBinary
+  | lhs=expr op=( '<' | '<=' | '>' | '>=' )  rhs=expr           #ExprBinary
+  | lhs=expr op=( '=' | '==' | '!=' | '<>' ) rhs=expr           #ExprBinary
+  | lhs=expr op=K_AND                        rhs=expr           #ExprBinary
+  | lhs=expr op=K_OR                         rhs=expr           #ExprBinary
+  | func_name '(' expr? (',' expr)* ')'                         #ExprFunc
+  | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'     #ExprObj        // object 
+  | '[' expr? (',' expr)* ']'                                   #ExprArr        // array
+  | '{{' expr? (',' expr)* '}}'                                 #ExprBag        // bag (TODO)
+  | '(' expr ')'                                                #ExprParan
   ;
 
 unary_op
@@ -74,12 +79,6 @@ attr_name
   : VAR_NAME
   ;
 
-keyword
-  : K_NOT
-  | K_AND
-  | K_OR
-  ;
-
 /* Lexer rules */
 
 // keywords
@@ -87,7 +86,6 @@ K_SELECT: S E L E C T;
 
 K_ELEMENT: E L E M E N T;
 K_ATTRIBUTE: A T T R I B U T E;
-
 
 K_FROM: F R O M;
 
