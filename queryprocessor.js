@@ -168,9 +168,9 @@ function evalExprQuery(expr, envir) {
  * @return {object}       result of query, in javascript object (NOT JSON)
  */
 function swfQuery(db, query) {
-  var outputFrom = evalFrom(db, query.from);
-  var outputWhere = evalWhere(db, outputFrom, query.where);
-  var outputSelect = evalSelect(db, outputWhere, query.select);
+  var outputFrom = evalFrom(db, query.from_clause);
+  var outputWhere = evalWhere(db, outputFrom, query.where_clause);
+  var outputSelect = evalSelect(db, outputWhere, query.select_clause);
   return outputSelect;
 }
 
@@ -559,11 +559,11 @@ button.addEventListener("click", function(){
   var parser = new SqlppParser(tokens);
   parser.buildParseTrees = true;
   var tree = parser.query();
-  //console.log(tree);
+  console.log(tree);
 
   var visitor = new SqlppVisitor();
   var ast = visitor.visit(tree);
-  //console.log(ast);
+  console.log(ast);
 
   //var listener = new SqlppListener();
   //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);

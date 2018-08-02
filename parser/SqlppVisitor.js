@@ -64,8 +64,8 @@ SqlppVisitor.prototype.visitSQLSel = function(ctx) {
     result.selectPairs[resultPos] = {
       from: this.visit(ctx.children[i++])
     };
-//NEED FIXING HERE
-    if (ctx.children[i].getText().toLowerCase() === 'as')
+
+    if (ctx.children[i] !== undefined && ctx.children[i].getText().toLowerCase() === 'as')
       result.selectPairs[resultPos].as = ctx.children[++i].getText();
 
     resultPos++;
@@ -241,7 +241,11 @@ SqlppVisitor.prototype.visitExprBinary = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprNestSWF.
 SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
-  return this.visit(ctx.swf_query());
+  return {
+    func: 'swf',
+    param: [this.visit(ctx.swf_query())],
+    isExpr: true
+  };
 };
 
 
