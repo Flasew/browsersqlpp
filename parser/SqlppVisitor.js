@@ -41,7 +41,7 @@ SqlppVisitor.prototype.visitSelElement = function(ctx) {
 // Visit a parse tree produced by SqlppParser#SelAttr.
 SqlppVisitor.prototype.visitSelAttr = function(ctx) {
   return {
-    selectType: 2, // SEL_TYPES.ATTRIBUTE,
+    selectType: 1, // SEL_TYPES.ATTRIBUTE,
     selectAttrName: this.visit(ctx.attrname),
     selectAttrVal:  this.visit(ctx.attrval)
   };
@@ -52,7 +52,7 @@ SqlppVisitor.prototype.visitSelAttr = function(ctx) {
 // TODO: select *
 SqlppVisitor.prototype.visitSQLSel = function(ctx) {
 
-  var result = {selectType: 3, selectPairs:[]};
+  var result = {selectType: 2, selectPairs:[]};
   var resultPos = 0;
 
   for (var i = 0; i < ctx.children.length; i++) {
@@ -61,12 +61,12 @@ SqlppVisitor.prototype.visitSQLSel = function(ctx) {
       || ctx.children[i].getText().toLowerCase() === 'select') 
       continue;
 
-    result[resultPos] = {
+    result.selectPairs[resultPos] = {
       from: this.visit(ctx.children[i++])
     };
-
+//NEED FIXING HERE
     if (ctx.children[i].getText().toLowerCase() === 'as')
-      result[resultPos].as = ctx.children[++i].getText();
+      result.selectPairs[resultPos].as = ctx.children[++i].getText();
 
     resultPos++;
   }

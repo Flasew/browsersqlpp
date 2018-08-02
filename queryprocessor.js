@@ -544,3 +544,25 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
 
 
+var envir = document.getElementById("DB");
+var button = document.getElementById("BUTTON");
+
+var fromArea = document.getElementById("FROM");
+var whereArea = document.getElementById("WHERE");
+var selectArea = document.getElementById("SELECT");
+
+button.addEventListener("click", function(){
+  var db = JSON.parse(envir.value);
+  //var clause = JSON.parse(tree.value);
+
+  var outputFrom = evalFrom(db, ast.from_clause);
+  fromArea.innerHTML = JSON.stringify(outputFrom);
+
+  var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
+  whereArea.innerHTML = JSON.stringify(outputWhere);
+
+  var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
+  selectArea.innerHTML = JSON.stringify(outputSelect);
+
+  //console.log(outputSelect);
+});
