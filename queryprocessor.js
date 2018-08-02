@@ -542,8 +542,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
 
 
-
-
+var query = document.getElementById("QUERY");
 var envir = document.getElementById("DB");
 var button = document.getElementById("BUTTON");
 
@@ -552,6 +551,24 @@ var whereArea = document.getElementById("WHERE");
 var selectArea = document.getElementById("SELECT");
 
 button.addEventListener("click", function(){
+  var input = query.value;
+  //console.log(input);
+  var chars = new antlr4.InputStream(input);
+  var lexer = new SqlppLexer(chars);
+  var tokens  = new antlr4.CommonTokenStream(lexer);
+  var parser = new SqlppParser(tokens);
+  parser.buildParseTrees = true;
+  var tree = parser.query();
+  //console.log(tree);
+
+  var visitor = new SqlppVisitor();
+  var ast = visitor.visit(tree);
+  //console.log(ast);
+
+  //var listener = new SqlppListener();
+  //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
+
+
   var db = JSON.parse(envir.value);
   //var clause = JSON.parse(tree.value);
 

@@ -64,30 +64,7 @@
     var SqlppVisitor = require('/sqlpp/parser/SqlppVisitor').SqlppVisitor;
 
 
-
     //var input = "SELECT ELEMENT r.a FROM R AS r";
-    var query = document.getElementById("QUERY");
-    var button = document.getElementById("BUTTON");
-    var ast;
-
-    button.addEventListener("click", function(){
-      var input = query.value;
-      //console.log(input);
-      var chars = new antlr4.InputStream(input);
-      var lexer = new SqlppLexer(chars);
-      var tokens  = new antlr4.CommonTokenStream(lexer);
-      var parser = new SqlppParser(tokens);
-      parser.buildParseTrees = true;
-      var tree = parser.query();
-      //console.log(tree);
-
-      var visitor = new SqlppVisitor();
-      ast = visitor.visit(tree);
-      //console.log(ast);
-
-      //var listener = new SqlppListener();
-      //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
-    });
 
 
   </script>
