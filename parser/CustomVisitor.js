@@ -3,10 +3,13 @@ const SqlppLexer = require('./SqlppLexer');
 const SqlppParser = require('./SqlppParser');
 var SqlppVisitor = require('./SqlppVisitor').SqlppVisitor;
 
-CustomListener = function() {
+CustomVisitor = function() {
     SqlppVisitor.call(this); // inherit default listener
     return this;
 };
+
+CustomVisitor.prototype = Object.create(SqlppVisitor.prototype);
+CustomVisitor.prototype.constructor = SqlppVisitor;
 
 // Visit a parse tree produced by SqlppParser#query.
 CustomVisitor.prototype.visitQuery = function(ctx) {
