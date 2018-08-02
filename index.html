@@ -1,40 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
+
+  <title>SQL++ SFW Query Processor</title>
+  <link rel="stylesheet" type="text/css" href="webStyle.css">
+  <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700" rel="stylesheet">
+
   <script type="text/javascript" src="lib/require.js"></script>
 
 </head>
 
 <body>
-<h2>12321</h2>
+  <h1>SFW Query Demo</h1>
+  <div>
+    <h2>Input 1: Environment Database (JSON Object)</h2>
+    <textarea type="text" id="DB"></textarea>
 
-<script type="text/javascript">
-    console.log("1233333333");
+  </div>
+
+  <hr>
+
+  <div>
+    <h2>Input 2: SQL++ Query(SFW only)</h2>
+    <textarea type="text" id="QUERY"></textarea><br />
+
+    <button id="BUTTON">Enter inputs!</button>
+
+  </div>
+
+  <hr>
+
+  <div>
+    <h2>Binding Output of From Clause:</h2>
+    <h2 id="FROM">
+    </h2>
+  </div>
+
+  <hr>
+
+  <div>
+    <h2>Binding Output of Where Clause:</h2>
+    <h2 id="WHERE">
+    </h2>
+  </div>
+
+    <hr>
+
+  <div>
+    <h2>Binding Output of Select Clause (Query Result):</h2>
+    <h2 id="SELECT">
+    </h2>
+  </div>
+
+
+
+  <script type="text/javascript">
 
     self.require = Tarp.require;
-    var antlr4 = require('/sql/node_modules/antlr4/index');
-    var SqlppLexer = require('/sql/parser/SqlppLexer').SqlppLexer;
-    var SqlppParser = require('/sql/parser/SqlppParser').SqlppParser;
-    //var SqlppListener = require('/sql/parser/SqlppListener').SqlppListener;
-    var SqlppVisitor = require('/sql/parser/SqlppVisitor').SqlppVisitor;
+    var antlr4 = require('./node_modules/antlr4/index');
+    var SqlppLexer = require('./parser/SqlppLexer').SqlppLexer;
+    var SqlppParser = require('./parser/SqlppParser').SqlppParser;
+    //var SqlppListener = require('./parser/SqlppListener').SqlppListener;
+    var SqlppVisitor = require('./parser/CustomVisitor').CustomVisitor;
 
-    var input = "SELECT  ELEMENT (SELECT  ATTRIBUTE g:v FROM r AS {g:v} WHERE g = 'no2') FROM readings AS r";
 
-    var chars = new antlr4.InputStream(input);
-    var lexer = new SqlppLexer(chars);
-    var tokens  = new antlr4.CommonTokenStream(lexer);
-    var parser = new SqlppParser(tokens);
-    parser.buildParseTrees = true;
-    var tree = parser.query();
-    console.log(tree);
+    //var input = "SELECT ELEMENT r.a FROM R AS r";
 
-    var visitor = new SqlppVisitor();
-    var ast = visitor.visit(tree);
-    console.log(ast);
 
-    //var listener = new SqlppListener();
-    //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
   </script>
+
+  <script type="text/javascript" src="queryprocessor.js"></script>
 </body>
 
 </html>

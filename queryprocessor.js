@@ -108,10 +108,10 @@ const EXPRESSIONS = {
  * Evaluate a general query
  */
 function evalQuery(db, query) {
-  if (query.isExpr)
-    return evalExprQuery(query, db);
-  else 
+  if (query.fromClause !== undefined)
     return swfQuery(db, query);
+  return evalExprQuery(query, db);
+    
 }
 
 /**
@@ -168,9 +168,9 @@ function evalExprQuery(expr, envir) {
  * @return {object}       result of query, in javascript object (NOT JSON)
  */
 function swfQuery(db, query) {
-  var outputFrom = evalFrom(db, query.from);
-  var outputWhere = evalWhere(db, outputFrom, query.where);
-  var outputSelect = evalSelect(db, outputWhere, query.select);
+  var outputFrom = evalFrom(db, query.from_clause);
+  var outputWhere = evalWhere(db, outputFrom, query.where_clause);
+  var outputSelect = evalSelect(db, outputWhere, query.select_clause);
   return outputSelect;
 }
 
@@ -542,5 +542,44 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
 
 
+var query = document.getElementById("QUERY");
+var envir = document.getElementById("DB");
+var button = document.getElementById("BUTTON");
+
+var fromArea = document.getElementById("FROM");
+var whereArea = document.getElementById("WHERE");
+var selectArea = document.getElementById("SELECT");
+
+button.addEventListener("click", function(){
+  var input = query.value;
+  //console.log(input);
+  var chars = new antlr4.InputStream(input);
+  var lexer = new SqlppLexer(chars);
+  var tokens  = new antlr4.CommonTokenStream(lexer);
+  var parser = new SqlppParser(tokens);
+  parser.buildParseTrees = true;
+  var tree = parser.query();
+  console.log(tree);
+
+  var visitor = new SqlppVisitor();
+  var ast = visitor.visit(tree);
+  console.log(ast);
+
+  //var listener = new SqlppListener();
+  //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
 
 
+  var db = JSON.parse(envir.value);
+  //var clause = JSON.parse(tree.value);
+
+  var outputFrom = evalFrom(db, ast.from_clause);
+  fromArea.innerHTML = JSON.stringify(outputFrom);
+
+  var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
+  whereArea.innerHTML = JSON.stringify(outputWhere);
+
+  var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
+  selectArea.innerHTML = JSON.stringify(outputSelect);
+
+  //console.log(outputSelect);
+});

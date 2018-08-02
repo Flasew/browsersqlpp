@@ -8,6 +8,7 @@ query
 
 swf_query
   : select_clause from_clause (where_clause)?
+  | from_clause (where_clause)? select_clause
   ;
 
 select_clause
@@ -110,6 +111,7 @@ K_OR: O R;
 
 STRLITERAL
   : '\'' (~'\'' | '\'\'')* '\''
+  | '"' (~'"'| '""')* '"'
   ;
 
 NUMBER
