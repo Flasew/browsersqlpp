@@ -990,6 +990,7 @@ FromRangePairContext.prototype.accept = function(visitor) {
 
 function FromFlattenContext(parser, ctx) {
 	From_itemContext.call(this, parser);
+    this.op = null; // Token;
     this.lexpr = null; // ExprContext;
     this.lvar = null; // VariableContext;
     this.rexpr = null; // ExprContext;
@@ -1019,14 +1020,6 @@ FromFlattenContext.prototype.K_AS = function(i) {
 };
 
 
-FromFlattenContext.prototype.K_INNER = function() {
-    return this.getToken(SqlppParser.K_INNER, 0);
-};
-
-FromFlattenContext.prototype.K_OUTER = function() {
-    return this.getToken(SqlppParser.K_OUTER, 0);
-};
-
 FromFlattenContext.prototype.expr = function(i) {
     if(i===undefined) {
         i = null;
@@ -1047,6 +1040,14 @@ FromFlattenContext.prototype.variable = function(i) {
     } else {
         return this.getTypedRuleContext(VariableContext,i);
     }
+};
+
+FromFlattenContext.prototype.K_INNER = function() {
+    return this.getToken(SqlppParser.K_INNER, 0);
+};
+
+FromFlattenContext.prototype.K_OUTER = function() {
+    return this.getToken(SqlppParser.K_OUTER, 0);
 };
 FromFlattenContext.prototype.accept = function(visitor) {
     if ( visitor instanceof SqlppVisitor ) {
@@ -1209,9 +1210,10 @@ SqlppParser.prototype.from_item = function(_p) {
             this._ctx = localctx;
             _prevctx = localctx;
             this.state = 88;
+            localctx.op = this._input.LT(1);
             _la = this._input.LA(1);
             if(!(_la===SqlppParser.K_INNER || _la===SqlppParser.K_OUTER)) {
-            this._errHandler.recoverInline(this);
+                localctx.op = this._errHandler.recoverInline(this);
             }
             else {
             	this._errHandler.reportMatch(this);

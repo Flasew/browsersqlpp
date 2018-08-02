@@ -28,7 +28,7 @@ from_item
   | lhs=from_item op=K_FULL K_OUTER? K_CORRELATE?                   rhs=from_item K_ON expr   #FromFull
   | lhs=from_item op=','                                            rhs=from_item             #FromComma
   | lhs=from_item op=(K_INNER | K_LEFT | K_RIGHT | K_FULL) K_JOIN   rhs=from_item K_ON expr   #FromJoin
-  | (K_INNER | K_OUTER) K_FLATTEN '(' lexpr=expr K_AS lvar=variable ',' rexpr=expr K_AS rvar=variable ')'           #FromFlatten
+  | op=(K_INNER | K_OUTER) K_FLATTEN '(' lexpr=expr K_AS lvar=variable ',' rexpr=expr K_AS rvar=variable ')'           #FromFlatten
   ;
 
 where_clause
