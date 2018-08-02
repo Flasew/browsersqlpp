@@ -87,8 +87,8 @@ CustomVisitor.prototype.visitFromILCorr = function(ctx) {
 
   var op = ctx.op.text.toLowerCase();
 
-  if (op === 'inner')   op = 6;
-  else                  op = 7;
+  if (op === 'inner')       op = 6;
+  else if (op === 'left')   op = 7;
 
   return {
     opType: op,
@@ -147,7 +147,28 @@ CustomVisitor.prototype.visitFromRangePair = function(ctx) {
 
 // TODO: Visit a parse tree produced by SqlppParser#FromFlatten. 
 CustomVisitor.prototype.visitFromFlatten = function(ctx) {
-  return this.visitChildren(ctx);
+
+  var result = {};
+
+  if (ctx.op.text.toLowerCase() === 'inner') 
+    result.opType = 9;
+  else if (ctx.op.text.toLowerCase() === 'outer')
+    result.opType = 10;
+
+  result.lhs = {
+    opType: 0,
+    bindFrom: this.visit(ctx.lexpr()),
+    bindTo: ctx.lvar.text
+  };
+
+  result.rhs = {
+    opType: 0,
+    bindFrom: this.visit(ctx.rexpr()),
+    bindTo: ctx.rvar.text
+  };
+
+  return result;
+
 };
 
 

@@ -380,7 +380,9 @@ function evalFromItem(fromItem, envir, bindTuple) {
     }
 
     // "COMMA" operator representing Cartesian product (flatten also allowed)
-    case FROM_OP_TYPES.COMMA: {
+    case FROM_OP_TYPES.COMMA: 
+    case FROM_OP_TYPES.INNERCORR:
+    case FROM_OP_TYPES.INNERFLAT: {
 
       bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
 
@@ -419,7 +421,9 @@ function evalFromItem(fromItem, envir, bindTuple) {
     }
 
     // left join operator same as SQL LEFT OUTER JOIN
-    case FROM_OP_TYPES.LEFTJOIN: {
+    case FROM_OP_TYPES.LEFTJOIN: 
+    case FROM_OP_TYPES.LEFTCORR:
+    case FROM_OP_TYPES.OUTERFLAT: {
 
       bindTuple = evalFromItem(fromItem.lhs, envir, bindTuple);
 
@@ -433,7 +437,13 @@ function evalFromItem(fromItem, envir, bindTuple) {
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
 
-          if (evalExprQuery(fromItem.on, newTuple)) {
+          if (fromItem.opType === FROM_OP_TYPES.LEFTJOIN) {
+            if (evalExprQuery(fromItem.on, newTuple)) {
+              newBind.push(newTuple);
+              leftincluded[i] = true;
+            }
+          }
+          else {
             newBind.push(newTuple);
             leftincluded[i] = true;
           }
@@ -535,6 +545,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
       break;
     }
+
   }
   return newBind;
 }
