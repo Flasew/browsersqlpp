@@ -21,9 +21,10 @@ CustomVisitor.prototype.visitQuery = function(ctx) {
 // Visit a parse tree produced by SqlppParser#swf_query.
 CustomVisitor.prototype.visitSwf_query = function(ctx) {
   return {
-    select_clause: this.visit(ctx.select_clause()),
-    from_clause:   this.visit(ctx.from_clause()),
-    where_clause:  ctx.where_clause() === null ? true : this.visit(ctx.where_clause())
+    select_clause:  this.visit(ctx.select_clause()),
+    from_clause:    this.visit(ctx.from_clause()),
+    where_clause:   ctx.where_clause() === null ? null : this.visit(ctx.where_clause()),
+    groupby_clause: ctx.groupby_clause() === null ? null : this.visit(ctx.groupby_clause())
   };
 };
 
@@ -406,8 +407,11 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
       expr: this.visit(ctx.children[i++])
     };
 
-    if (ctx.children[i] !== undefined && ctx.children[i].getText().toLowerCase() === 'as')
-      result[resultPos].as = ctx.children[++i].getText();
+    if (ctx.children[i] !== undefined)
+      if (ctx.children[i].getText().toLowerCase() === 'as')
+        result[resultPos].as = ctx.children[++i].getText();
+      else 
+        result[resultPos].as = ctx.children[i].getText();
 
     resultPos++;
   }

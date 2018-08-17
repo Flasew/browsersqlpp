@@ -215,11 +215,11 @@ var symbolicNames = [ null, null, null, null, null, null, null, null, null,
                       "K_SELECT", "K_ELEMENT", "K_ATTRIBUTE", "K_FROM", 
                       "K_AS", "K_AT", "K_INNER", "K_LEFT", "K_RIGHT", "K_FULL", 
                       "K_OUTER", "K_JOIN", "K_CORRELATE", "K_ON", "K_FLATTEN", 
-                      "K_WHERE", "K_GROUP", "K_BY", "K_NOT", "K_AND", "K_OR", 
+                      "K_WHERE", "K_GROUP", "K_BY", "K_NOT", "K_AND", "K_OR",
                       "STRLITERAL", "NUMBER", "VAR_NAME", "WS" ];
 
 var ruleNames =  [ "query", "swf_query", "select_clause", "from_clause", 
-                   "from_item", "where_clause", "groupby_clause", "expr", 
+                   "from_item", "where_clause", "groupby_clause", "expr",
                    "unary_op", "value", "variable", "func_name", "attr_name" ];
 
 function SqlppParser (input) {
