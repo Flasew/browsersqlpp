@@ -1,5 +1,5 @@
-hash = require('object-hash');   // hash function for object
-_    = require('underscore');
+var hash = require('./node_modules/object-hash/dist/object_hash.js');
+var _ = require('./node_modules/underscore/underscore.js');
 
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
@@ -197,6 +197,10 @@ function evalFrom(envir, fromClause){
  * @return {array}                 result of the execution of WHERE clause.
  */
 function evalWhere(envir, prevBindOutput, whereClause) {
+
+  if(whereClause === null){
+    return prevBindOutput;
+  }
 
   // console.log("OutputFrom: ");
   // console.log(bindOutputFrom);
@@ -559,6 +563,10 @@ function evalFromItem(fromItem, envir, bindTuple) {
   }, ...]*/
 function evalGroupBy(envir, prevBindOutput, groupbyClause) {
 
+  if(groupbyClause === null){
+    return prevBindOutput;
+  }
+
   var result = [];
   var map = {};
 
@@ -593,11 +601,14 @@ function evalGroupBy(envir, prevBindOutput, groupbyClause) {
       map[hashed] = [{key: groupby, group: [prevBindOutput[i]]}];
     }
   }
+console.log(map);
+  for (let hashKey in map) {
+    for(let i = 0; i < map[hashKey].length; i++){
+      let item = Object.assign({}, map[hashKey][i].key);
+      item["group"] = map[hashKey][i].group;
 
-  for (let i = 0; i < map.length; i++) {
-    var item = Object.assign({}, map[i].key);
-    item[group] = map[i].group;
-    result.push(item);
+      result.push(item);
+    }
   }
 
   return result;
@@ -620,6 +631,7 @@ var button = document.getElementById("BUTTON");
 
 var fromArea = document.getElementById("FROM");
 var whereArea = document.getElementById("WHERE");
+var groupbyArea = document.getElementById("GROUPBY");
 var selectArea = document.getElementById("SELECT");
 
 button.addEventListener("click", function(){
@@ -645,13 +657,24 @@ button.addEventListener("click", function(){
   //var clause = JSON.parse(tree.value);
 
   var outputFrom = evalFrom(db, ast.from_clause);
+  console.log("Output of FROM Clause:");
+  console.log(outputFrom);
   fromArea.innerHTML = JSON.stringify(outputFrom);
 
   var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
+  console.log("Output of WHERE Clause:");
+  console.log(outputWhere);
   whereArea.innerHTML = JSON.stringify(outputWhere);
 
-  var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
-  selectArea.innerHTML = JSON.stringify(outputSelect);
+  var outputGroupBy = evalGroupBy(db, outputWhere, ast.groupby_clause);
+  console.log("Output of GROUP BY Clause:");
+  console.log(outputGroupBy);
+  groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
+
+  //var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
+  //console.log("Output of SELECT Clause:");
+  //console.log(outputSelect);
+  //selectArea.innerHTML = JSON.stringify(outputSelect);
 
   //console.log(outputSelect);
 });
