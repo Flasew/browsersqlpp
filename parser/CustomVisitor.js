@@ -390,6 +390,32 @@ CustomVisitor.prototype.visitAttr_name = function(ctx) {
   return this.visitChildren(ctx);
 };
 
+// Visit a parse tree produced by SqlppParser#groupby_clause.
+CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
+  var result = [];
+  var resultPos = 0;
 
+  for (var i = 0; i < ctx.children.length; i++) {
+    
+    if (ctx.children[i].getText().toLowerCase() === ',' 
+      || ctx.children[i].getText().toLowerCase() === 'group'
+      || ctx.children[i].getText().toLowerCase() === 'by') 
+      continue;
+
+    result[resultPos] = {
+      expr: this.visit(ctx.children[i++])
+    };
+
+    if (ctx.children[i] !== undefined && ctx.children[i].getText().toLowerCase() === 'as')
+      result[resultPos].as = ctx.children[++i].getText();
+
+    resultPos++;
+  }
+  // console.log('sqlsel');
+  // console.log(ctx.expr());
+  // console.log(ctx.attr_name());
+  return result;
+
+};
 
 exports.CustomVisitor = CustomVisitor;

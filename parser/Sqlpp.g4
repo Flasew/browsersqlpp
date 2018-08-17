@@ -7,8 +7,8 @@ query
   ;
 
 swf_query
-  : select_clause from_clause (where_clause)?
-  | from_clause (where_clause)? select_clause
+  : select_clause from_clause (where_clause)? (groupby_clause)?
+  | from_clause (where_clause)? (groupby_clause)? select_clause
   ;
 
 select_clause
@@ -33,6 +33,10 @@ from_item
 
 where_clause
   : K_WHERE expr
+  ;
+
+groupby_clause
+  : K_GROUP K_BY expr (K_AS variable)? (',' expr (K_AS variable)?)*
   ;
 
 expr
@@ -104,6 +108,9 @@ K_ON: O N;
 K_FLATTEN: F L A T T E N;
 
 K_WHERE: W H E R E;
+
+K_GROUP: G R O U P;
+K_BY: B Y;
 
 K_NOT: N O T;
 K_AND: A N D;

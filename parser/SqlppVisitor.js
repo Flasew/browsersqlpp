@@ -96,6 +96,12 @@ SqlppVisitor.prototype.visitWhere_clause = function(ctx) {
 };
 
 
+// Visit a parse tree produced by SqlppParser#groupby_clause.
+SqlppVisitor.prototype.visitGroupby_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
 // Visit a parse tree produced by SqlppParser#ExprObj.
 SqlppVisitor.prototype.visitExprObj = function(ctx) {
   return this.visitChildren(ctx);
