@@ -1,3 +1,6 @@
+hash = require('object-hash');   // hash function for object
+_    = require('underscore');
+
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
  */
@@ -189,17 +192,17 @@ function evalFrom(envir, fromClause){
 /**
  * Evaluate the WHERE clause of a query. The parsed format of WHERE clause will be a single expression.
  * @param  {object} envir          environment of the evaluation containing variable definitions 
- * @param  {array}  bindOutputFrom binding tuple output of the FROM clause
+ * @param  {array}  prevBindOutput binding tuple output of the FROM clause
  * @param  {object} whereClause    WHERE clause of the query parsed to javascript object format
  * @return {array}                 result of the execution of WHERE clause.
  */
-function evalWhere(envir, bindOutputFrom, whereClause) {
+function evalWhere(envir, prevBindOutput, whereClause) {
 
   // console.log("OutputFrom: ");
   // console.log(bindOutputFrom);
   var currBind = [];
 
-  for (let item of bindOutputFrom) {
+  for (let item of prevBindOutput) {
     if (evalExprQuery(whereClause, Object.assign({}, item, envir))) {
       currBind.push(item);
     }
@@ -210,11 +213,11 @@ function evalWhere(envir, bindOutputFrom, whereClause) {
 /**
  * Evaluate the SELECT clause of a query. 
  * @param  {object} envir           the environment of a query
- * @param  {array}  bindOutputWhere binding tuple out of the previous clause
+ * @param  {array}  prevBindOutput binding tuple out of the previous clause
  * @param  {object} selectClause    select clause parsed to the javascript object format
  * @return {array}                  result of the query (not distinguished between bag and arr for now)
  */
-function evalSelect(envir, bindOutputWhere, selectClause) {
+function evalSelect(envir, prevBindOutput, selectClause) {
 
   switch (selectClause.selectType) {
 
@@ -222,7 +225,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
     case SEL_TYPES.ELEMENT: {
       var result = [];
 
-      for(let item of bindOutputWhere) {
+      for(let item of prevBindOutput) {
         result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, item, envir)));
       }
 
@@ -233,7 +236,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
     case SEL_TYPES.ATTRIBUTE: {
       var result = {};
 
-      for(let item of bindOutputWhere) {
+      for(let item of prevBindOutput) {
         let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, item, envir));
 
         if(typeof(attrName) !== 'string'){
@@ -257,7 +260,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
       // SELECT * case. the table must be homomorphic to a valid SQL table format
       if (selectClause.selectAll) {
         var result = [];
-        for (let t of bindOutputWhere) {
+        for (let t of prevBindOutput) {
           let newTuple = {}
           for (let table in t) 
             for (let col in t[table])
@@ -291,7 +294,7 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
 
       }
 
-      var result = evalSelect(envir, bindOutputWhere, elementReconstruct);
+      var result = evalSelect(envir, prevBindOutput, elementReconstruct);
 
       return result;
     }
@@ -302,9 +305,9 @@ function evalSelect(envir, bindOutputWhere, selectClause) {
 /**
  * Evaluate one from_item from the FROM clause. The from clause will be parsed
  * to an array of from_item objects and evaluated in order. Each of the object
- * will be evaluated based on the result of the previous output as well as 
+ * will be evaluated based on the result of the previous output as well as
  * other information depending on the operator type (e.g., the join operator
- * will have it's RHS as part of the information of evaluation) 
+ * will have it's RHS as part of the information of evaluation)
  * @param  {object} item      a from_item object specifying the op_type, data, etc.
  * @param  {object} envir     environment of the execution
  * @param  {array}  bindTuple binding tuples that's already been evaluated
@@ -549,6 +552,64 @@ function evalFromItem(fromItem, envir, bindTuple) {
   }
   return newBind;
 }
+
+/* group: [{
+    expr:
+    as:
+  }, ...]*/
+function evalGroupBy(envir, prevBindOutput, groupbyClause) {
+
+  var result = [];
+  var map = {};
+
+  for (let i = 0; i < prevBindOutput.length; i++){
+
+    var groupby = {};
+    for (let j = 0; j < groupbyClause.length; j++) {
+      groupby[groupbyClause[j].as] = evalExprQuery(groupbyClause[j].expr, prevBindOutput[i]);
+    }
+
+    var hashed = hash(groupby);
+
+    if (map[hashed] !== undefined) {
+      var found = false;
+
+      for (let k = 0; k < map[hashed].length; k++){
+        if (_.isEqual(map[hashed][k].key, groupby)) {
+          map[hashed][k].group.push(prevBindOutput[i]);
+
+          found = true;
+
+          break;
+        }
+      }
+      
+      if(!found){
+        map[hashed].push({key: groupby, group: [prevBindOutput[i]]});
+      }
+    }
+
+    else {
+      map[hashed] = [{key: groupby, group: [prevBindOutput[i]]}];
+    }
+  }
+
+  for (let i = 0; i < map.length; i++) {
+    var item = Object.assign({}, map[i].key);
+    item[group] = map[i].group;
+    result.push(item);
+  }
+
+  return result;
+
+}
+
+
+
+
+
+
+
 
 
 
