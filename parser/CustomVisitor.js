@@ -397,10 +397,10 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
   var resultPos = 0;
 
   for (var i = 0; i < ctx.children.length; i++) {
-    
-    if (ctx.children[i].getText().toLowerCase() === ',' 
+
+    if (ctx.children[i].getText().toLowerCase() === ','
       || ctx.children[i].getText().toLowerCase() === 'group'
-      || ctx.children[i].getText().toLowerCase() === 'by') 
+      || ctx.children[i].getText().toLowerCase() === 'by')
       continue;
 
     result[resultPos] = {
@@ -410,7 +410,7 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
     if (ctx.children[i] !== undefined)
       if (ctx.children[i].getText().toLowerCase() === 'as')
         result[resultPos].as = ctx.children[++i].getText();
-      else 
+      else
         result[resultPos].as = ctx.children[i].getText();
 
     resultPos++;
@@ -421,5 +421,35 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
   return result;
 
 };
+
+// Visit a parse tree produced by SqlppParser#having_clause.
+CustomVisitor.prototype.visitHaving_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#setop_clause.
+CustomVisitor.prototype.visitSetop_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#orderby_clause.
+CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#limit_clause.
+CustomVisitor.prototype.visitLimit_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#offset_clause.
+CustomVisitor.prototype.visitOffset_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
 
 exports.CustomVisitor = CustomVisitor;

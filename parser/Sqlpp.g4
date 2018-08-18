@@ -7,8 +7,8 @@ query
   ;
 
 swf_query
-  : select_clause from_clause (where_clause)? (groupby_clause)?
-  | from_clause (where_clause)? (groupby_clause)? select_clause
+  : select_clause from_clause (where_clause)? (groupby_clause)? (having_clause)? (setop_clause)? (orderby_clause)? (limit_clause)? (offset_clause)?
+  | from_clause (where_clause)? (groupby_clause)? (having_clause)? (setop_clause)? (orderby_clause)? (limit_clause)? (offset_clause)? select_clause
   ;
 
 select_clause
@@ -37,6 +37,26 @@ where_clause
 
 groupby_clause
   : K_GROUP K_BY expr (K_AS variable)? (',' expr (K_AS variable)?)*
+  ;
+
+having_clause
+  : K_HAVING expr
+  ;
+
+setop_clause
+  : (K_UNION|K_INTERSECT|K_EXCEPT) (K_ALL)? swf_query
+  ;
+
+orderby_clause
+  : K_ORDER K_BY expr (K_ASC | K_DESC)? (',' expr (K_ASC | K_DESC)?)*
+  ;
+
+limit_clause
+  : K_LIMIT expr
+  ;
+
+offset_clause
+  : K_OFFSET expr
   ;
 
 expr
@@ -111,6 +131,21 @@ K_WHERE: W H E R E;
 
 K_GROUP: G R O U P;
 K_BY: B Y;
+
+K_HAVING: H A V I N G;
+
+K_UNION: U N I O N;
+K_INTERSECT: I N T E R S E C T;
+K_EXCEPT: E X C E P T;
+K_ALL: A L L;
+
+K_ORDER: O R D E R;
+K_ASC: A S C;
+K_DESC: D E S C;
+
+K_LIMIT: L I M I T;
+
+K_OFFSET: O F F S E T;
 
 K_NOT: N O T;
 K_AND: A N D;

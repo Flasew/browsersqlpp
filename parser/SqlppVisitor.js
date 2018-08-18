@@ -102,6 +102,36 @@ SqlppVisitor.prototype.visitGroupby_clause = function(ctx) {
 };
 
 
+// Visit a parse tree produced by SqlppParser#having_clause.
+SqlppVisitor.prototype.visitHaving_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#setop_clause.
+SqlppVisitor.prototype.visitSetop_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#orderby_clause.
+SqlppVisitor.prototype.visitOrderby_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#limit_clause.
+SqlppVisitor.prototype.visitLimit_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#offset_clause.
+SqlppVisitor.prototype.visitOffset_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
 // Visit a parse tree produced by SqlppParser#ExprObj.
 SqlppVisitor.prototype.visitExprObj = function(ctx) {
   return this.visitChildren(ctx);
