@@ -214,14 +214,21 @@ function evalWhere(envir, prevBindOutput, whereClause) {
   return currBind;
 }
 
+function evalSelect(envir, prevBindOutput, selectClause) {
+  if (selectClause.aggrQuery) 
+    return evalSelectAggr(envir, prevBindOutput, selectClause);
+  else 
+    return evalSelectNoAggr(envir, prevBindOutput, selectClause);
+}
+
 /**
- * Evaluate the SELECT clause of a query. 
+ * Evaluate the SELECT clause of a query with no aggregate query. 
  * @param  {object} envir           the environment of a query
  * @param  {array}  prevBindOutput binding tuple out of the previous clause
  * @param  {object} selectClause    select clause parsed to the javascript object format
  * @return {array}                  result of the query (not distinguished between bag and arr for now)
  */
-function evalSelect(envir, prevBindOutput, selectClause) {
+function evalSelectNoAggr(envir, prevBindOutput, selectClause) {
 
   switch (selectClause.selectType) {
 
@@ -295,15 +302,96 @@ function evalSelect(envir, prevBindOutput, selectClause) {
         newObj.attrVal = item.from;
 
         elementReconstruct.selectExpr.param.push(newObj);
-
       }
 
-      var result = evalSelect(envir, prevBindOutput, elementReconstruct);
+      var result = evalSelectNoAggr(envir, prevBindOutput, elementReconstruct);
 
       return result;
     }
   }
 
+}
+
+function evalSelectAggr(envir, prevBindOutput, selectClause){
+  switch (selectClause.selectType) {
+
+    // SELECT ELEMENT ...
+    case SEL_TYPES.ELEMENT: {
+      var result = [];
+
+      for(let item of prevBindOutput) {
+        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, item, envir)));
+      }
+
+      return result;
+    }
+
+    // SELECT ATTRIBUTE {:} ...
+    case SEL_TYPES.ATTRIBUTE: {
+      var result = {};
+
+      for(let item of prevBindOutput) {
+        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, item, envir));
+
+        if(typeof(attrName) !== 'string'){
+          throw {
+            name: 'NotString',
+            message: 'Not a string'
+          };
+        }
+
+        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, item, envir));
+
+        result[attrName] = attrVal;
+      }
+
+      return result;
+    }
+
+    // SELECT ..., parsed to SELECT ELEMENT first and then recursively evaluated
+    case SEL_TYPES.SQLSELECT: {
+
+      // SELECT * case. the table must be homomorphic to a valid SQL table format
+      if (selectClause.selectAll) {
+        var result = [];
+        for (let t of prevBindOutput) {
+          let newTuple = {}
+          for (let table in t) 
+            for (let col in t[table])
+              newTuple[col] = t[table][col];
+          result.push(newTuple);
+        }
+        return result;
+      }
+
+      var elementReconstruct = {
+        selectType: SEL_TYPES.ELEMENT,
+        selectExpr: {
+          func: 'obj',
+          param: [],
+          isExpr: true
+        }
+      };
+
+      for(let item of selectClause.selectPairs) {
+        if(item.as === undefined){
+          let lastElementIndex = item.from.param.length - 1;
+
+          item.as = item.from.param[lastElementIndex];
+        }
+
+        let newObj = {};
+        newObj.attrName = item.as;
+        newObj.attrVal = item.from;
+
+        elementReconstruct.selectExpr.param.push(newObj);
+      }
+
+      var result = evalSelectNoAggr(envir, prevBindOutput, elementReconstruct);
+
+      return result;
+    }
+  }
 }
 
 /**
@@ -574,7 +662,25 @@ function evalGroupBy(envir, prevBindOutput, groupbyClause) {
 
     var groupby = {};
     for (let j = 0; j < groupbyClause.length; j++) {
-      groupby[groupbyClause[j].as] = evalExprQuery(groupbyClause[j].expr, prevBindOutput[i]);
+      if (groupbyClause[j].as === undefined) {
+
+        let pathArr = pathToArr(groupbyClause[j].expr);
+        let curr = groupby;
+
+        while (pathArr.length >= 1) {
+          if (curr[pathArr[0]] === undefined) {
+            curr[pathArr[0]] = {};
+          }
+          curr = curr[pathArr[0]];
+          pathArr.shift();
+        }
+
+        curr[pathArr[0]] = evalExprQuery(groupbyClause[j].expr, prevBindOutput[i]);
+      }
+
+      else {
+        groupby[groupbyClause[j].as] = evalExprQuery(groupbyClause[j].expr, prevBindOutput[i]);
+      }
     }
 
     var hashed = hash(groupby);
@@ -601,7 +707,7 @@ function evalGroupBy(envir, prevBindOutput, groupbyClause) {
       map[hashed] = [{key: groupby, group: [prevBindOutput[i]]}];
     }
   }
-console.log(map);
+  // console.log(map);
   for (let hashKey in map) {
     for(let i = 0; i < map[hashKey].length; i++){
       let item = Object.assign({}, map[hashKey][i].key);
@@ -615,11 +721,38 @@ console.log(map);
 
 }
 
+/**
+ * Convert a path expression back to the string token, for group by case 3
+ * @param  {object} pathExpr parsed path expression
+ * @return {string}          original string token with '.'
+ */
+function pathToStr(pathExpr) {
+  var curr = pathExpr;
+  var result = pathExpr.param[1];
 
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result = curr.param[1] + '.' + result;
+  }
 
+  result = curr.param[0].param[0] + '.' + result;
 
+  return result;
+}
 
+function pathToArr(pathExpr) {
+  var curr = pathExpr;
+  var result = [pathExpr.param[1]];
 
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result.unshift(curr.param[1]);
+  }
+
+  result.unshift(curr.param[0].param[0]);
+
+  return result;
+}
 
 
 
@@ -671,10 +804,10 @@ button.addEventListener("click", function(){
   console.log(outputGroupBy);
   groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
 
-  //var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
-  //console.log("Output of SELECT Clause:");
-  //console.log(outputSelect);
-  //selectArea.innerHTML = JSON.stringify(outputSelect);
+  var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
+  console.log("Output of SELECT Clause:");
+  console.log(outputSelect);
+  selectArea.innerHTML = JSON.stringify(outputSelect);
 
   //console.log(outputSelect);
 });
