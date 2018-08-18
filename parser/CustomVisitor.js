@@ -466,8 +466,9 @@ CustomVisitor.prototype.visitOffset_clause = function(ctx) {
 SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   
   var result = {func: ctx.aggr.text.toLowerCase(), isExpr: true};
+  var exprResult = this.visit(ctx.expr());
   
-  if (ctx.arg.text === '*') {
+  if (exprResult === '*') {
     if (result.func !== 'count') {
       throw {
         name: 'Aggr(*) not count',
@@ -484,8 +485,6 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   } 
 
   else {
-    var exprResult = this.visit(ctx.arg);
-
     if (exprResult.select_clause === undefined) {
       exprResult = {
         select_clause: {

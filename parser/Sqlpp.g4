@@ -73,7 +73,7 @@ expr
   | lhs=expr op=( '=' | '==' | '!=' | '<>' ) rhs=expr                         #ExprBinary
   | lhs=expr op=K_AND                        rhs=expr                         #ExprBinary
   | lhs=expr op=K_OR                         rhs=expr                         #ExprBinary
-  | aggr=(K_SUM | K_MAX | K_MIN | K_COUNT | K_AVG) '(' arg=('*' | expr) ')'   #ExprAggr
+  | aggr=(K_SUM | K_MAX | K_MIN | K_COUNT | K_AVG) '(' expr ')'   #ExprAggr
   | func_name '(' expr? (',' expr)* ')'                                       #ExprFunc
   | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'                   #ExprObj        // object 
   | '[' expr? (',' expr)* ']'                                                 #ExprArr        // array
