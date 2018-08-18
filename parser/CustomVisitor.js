@@ -407,11 +407,12 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
       expr: this.visit(ctx.children[i++])
     };
 
-    if (ctx.children[i] !== undefined)
-      if (ctx.children[i].getText().toLowerCase() === 'as')
-        result[resultPos].as = ctx.children[++i].getText();
-      else 
-        result[resultPos].as = ctx.children[i].getText();
+    if (ctx.children[i] !== undefined && ctx.children[i].getText().toLowerCase() === 'as'){
+      result[resultPos].as = ctx.children[++i].getText();
+    }
+    else{
+      result[resultPos].as = ctx.children[i - 1].getText();
+    }
 
     resultPos++;
   }
