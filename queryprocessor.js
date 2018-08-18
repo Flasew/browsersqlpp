@@ -30,6 +30,7 @@ const SEL_TYPES = Object.freeze({
   SQLSELECT: 2
 });
 
+const AGGR_FUNC = Object.freeze(['avg', 'sum', 'max', 'min', 'count']);
 /**
  * All possible different expressions used in expression query. 
  * The object 'expression' is essentially a library of different expressions,
@@ -56,6 +57,17 @@ const EXPRESSIONS = {
   div: (lhs, rhs) => lhs / rhs,
   mod: (lhs, rhs) => lhs % rhs,
   neg: arg => -arg,
+
+  /* aggregate operator */
+  avg: collection => sum(collection) / count(collection),
+
+  count: collection => collection.length,
+
+  min: collection => collection.reduce((acc, curr) => curr < acc ? curr : acc),
+
+  max: collection => collection.reduce((acc, curr) => curr > acc ? curr : acc),
+
+  sum: collection => collection.reduce((a,b) => a + b, 0),
 
   /* other */
 
@@ -173,7 +185,8 @@ function evalExprQuery(expr, envir) {
 function swfQuery(db, query) {
   var outputFrom = evalFrom(db, query.from_clause);
   var outputWhere = evalWhere(db, outputFrom, query.where_clause);
-  var outputSelect = evalSelect(db, outputWhere, query.select_clause);
+  var outputGroupby = evalGroupBy(db, outputFrom, query.groupbyClause);
+  var outputSelect = evalSelect(db, outputGroupby, query.select_clause);
   return outputSelect;
 }
 
@@ -667,7 +680,7 @@ function evalGroupBy(envir, prevBindOutput, groupbyClause) {
         let pathArr = pathToArr(groupbyClause[j].expr);
         let curr = groupby;
 
-        while (pathArr.length >= 1) {
+        while (pathArr.length > 1) {
           if (curr[pathArr[0]] === undefined) {
             curr[pathArr[0]] = {};
           }

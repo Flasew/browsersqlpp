@@ -60,24 +60,25 @@ offset_clause
   ;
 
 expr
-  : '(' swf_query ')'                                           #ExprNestSWF    // Nested query
-  | value                                                       #ExprVal        // literal values
-  | variable                                                    #ExprVari       // variable
-  | expr '.' attr_name                                          #ExprPath       // path
-  | expr '[' expr ']'                                           #ExprArrAcs     // array access (TODO)
-  | unary_op expr                                               #ExprUnary      // operators & function call
-  | lhs=expr op='||'                         rhs=expr           #ExprBinary
-  | lhs=expr op=( '*' | '/' | '%' )          rhs=expr           #ExprBinary
-  | lhs=expr op=( '+' | '-' )                rhs=expr           #ExprBinary
-  | lhs=expr op=( '<' | '<=' | '>' | '>=' )  rhs=expr           #ExprBinary
-  | lhs=expr op=( '=' | '==' | '!=' | '<>' ) rhs=expr           #ExprBinary
-  | lhs=expr op=K_AND                        rhs=expr           #ExprBinary
-  | lhs=expr op=K_OR                         rhs=expr           #ExprBinary
-  | func_name '(' expr? (',' expr)* ')'                         #ExprFunc
-  | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'     #ExprObj        // object 
-  | '[' expr? (',' expr)* ']'                                   #ExprArr        // array
-  | '{{' expr? (',' expr)* '}}'                                 #ExprBag        // bag (TODO)
-  | '(' expr ')'                                                #ExprParan
+  : '(' swf_query ')'                                                         #ExprNestSWF    // Nested query
+  | value                                                                     #ExprVal        // literal values
+  | variable                                                                  #ExprVari       // variable
+  | expr '.' attr_name                                                        #ExprPath       // path
+  | expr '[' expr ']'                                                         #ExprArrAcs     // array access (TODO)
+  | unary_op expr                                                             #ExprUnary      // operators & function call
+  | lhs=expr op='||'                         rhs=expr                         #ExprBinary
+  | lhs=expr op=( '*' | '/' | '%' )          rhs=expr                         #ExprBinary
+  | lhs=expr op=( '+' | '-' )                rhs=expr                         #ExprBinary
+  | lhs=expr op=( '<' | '<=' | '>' | '>=' )  rhs=expr                         #ExprBinary
+  | lhs=expr op=( '=' | '==' | '!=' | '<>' ) rhs=expr                         #ExprBinary
+  | lhs=expr op=K_AND                        rhs=expr                         #ExprBinary
+  | lhs=expr op=K_OR                         rhs=expr                         #ExprBinary
+  | aggr=(K_SUM | K_MAX | K_MIN | K_COUNT | K_AVG) '(' arg=('*' | expr) ')'   #ExprAggr
+  | func_name '(' expr? (',' expr)* ')'                                       #ExprFunc
+  | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'                   #ExprObj        // object 
+  | '[' expr? (',' expr)* ']'                                                 #ExprArr        // array
+  | '{{' expr? (',' expr)* '}}'                                               #ExprBag        // bag (TODO)
+  | '(' expr ')'                                                              #ExprParan
   ;
 
 unary_op
@@ -150,6 +151,12 @@ K_OFFSET: O F F S E T;
 K_NOT: N O T;
 K_AND: A N D;
 K_OR: O R;
+
+K_SUM: S U M;
+K_MIN: M I N;
+K_MAX: M A X;
+K_AVG: A V G;
+K_COUNT: C O U N T;
 
 STRLITERAL
   : '\'' (~'\'' | '\'\'')* '\''

@@ -293,6 +293,7 @@ CustomVisitor.prototype.visitExprFunc = function(ctx) {
     result.param[i] = this.visit(ctx.expr()[i]);
   }
 
+
   return result;
 };
 
@@ -461,5 +462,59 @@ CustomVisitor.prototype.visitOffset_clause = function(ctx) {
   return this.visitChildren(ctx);
 };
 
+// Visit a parse tree produced by SqlppParser#ExprAggr.
+SqlppVisitor.prototype.visitExprAggr = function(ctx) {
+  
+  var result = {func: ctx.aggr.text.toLowerCase(), isExpr: true};
+  
+  if (ctx.arg.text === '*') {
+    if (result.func !== 'count') {
+      throw {
+        name: 'Aggr(*) not count',
+        message: '\'*\' can only be used with count.'
+      };
+    }
+    else {
+      var exprResult = {
+        func: 'variable',
+        param: ['group'],
+        isExpr: true
+      };
+    }
+  } 
+
+  else {
+    var exprResult = this.visit(ctx.arg);
+
+    if (exprResult.select_clause === undefined) {
+      exprResult = {
+        select_clause: {
+          selectType: 0,
+          selectExpr: {
+            func: 'path',
+            param: [
+              '___group',
+              exprResult
+            ],
+            isExpr: true
+          }
+        },
+        from_clause: {
+          opType: 0,
+          bindFrom: {
+            func: 'variable',
+            param: ['group'],
+            isExpr: true
+          },
+          bindTo: '___group'
+        }
+      }
+    }
+  }
+
+  result.param = [exprResult];
+
+  return result;
+};
 
 exports.CustomVisitor = CustomVisitor;

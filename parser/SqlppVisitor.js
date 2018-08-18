@@ -132,26 +132,44 @@ SqlppVisitor.prototype.visitOffset_clause = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprObj.
-SqlppVisitor.prototype.visitExprObj = function(ctx) {
-  return this.visitChildren(ctx);
-};
-
-
 // Visit a parse tree produced by SqlppParser#ExprBag.
 SqlppVisitor.prototype.visitExprBag = function(ctx) {
   return this.visitChildren(ctx);
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprBinary.
-SqlppVisitor.prototype.visitExprBinary = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprNestSWF.
+SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
   return this.visitChildren(ctx);
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprNestSWF.
-SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprAggr.
+SqlppVisitor.prototype.visitExprAggr = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprArrAcs.
+SqlppVisitor.prototype.visitExprArrAcs = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprParan.
+SqlppVisitor.prototype.visitExprParan = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprObj.
+SqlppVisitor.prototype.visitExprObj = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprBinary.
+SqlppVisitor.prototype.visitExprBinary = function(ctx) {
   return this.visitChildren(ctx);
 };
 
@@ -164,12 +182,6 @@ SqlppVisitor.prototype.visitExprUnary = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprFunc.
 SqlppVisitor.prototype.visitExprFunc = function(ctx) {
-  return this.visitChildren(ctx);
-};
-
-
-// Visit a parse tree produced by SqlppParser#ExprArrAcs.
-SqlppVisitor.prototype.visitExprArrAcs = function(ctx) {
   return this.visitChildren(ctx);
 };
 
@@ -194,12 +206,6 @@ SqlppVisitor.prototype.visitExprVal = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprArr.
 SqlppVisitor.prototype.visitExprArr = function(ctx) {
-  return this.visitChildren(ctx);
-};
-
-
-// Visit a parse tree produced by SqlppParser#ExprParan.
-SqlppVisitor.prototype.visitExprParan = function(ctx) {
   return this.visitChildren(ctx);
 };
 
