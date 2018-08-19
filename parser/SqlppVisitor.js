@@ -216,6 +216,12 @@ SqlppVisitor.prototype.visitUnary_op = function(ctx) {
 };
 
 
+// Visit a parse tree produced by SqlppParser#keyword.
+SqlppVisitor.prototype.visitKeyword = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
 // Visit a parse tree produced by SqlppParser#value.
 SqlppVisitor.prototype.visitValue = function(ctx) {
   return this.visitChildren(ctx);

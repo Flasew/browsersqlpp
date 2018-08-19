@@ -1,9 +1,9 @@
 grammar Sqlpp;
 
 /* Parser rules */
-query
-  : expr       
-  | swf_query   
+query       
+  : swf_query
+  | expr
   ;
 
 swf_query
@@ -60,8 +60,8 @@ offset_clause
   ;
 
 expr
-  : '(' swf_query ')'                                                               #ExprNestSWF    // Nested query
-  | swf_query                                                                       #ExprNestSWF
+  : swf_query                                                                       #ExprNestSWF    // Nested query
+  | '(' swf_query ')'                                                               #ExprNestSWF
   | value                                                                           #ExprVal        // literal values
   | variable                                                                        #ExprVari       // variable
   | expr '.' attr_name                                                              #ExprPath       // path
@@ -89,6 +89,58 @@ unary_op
   | K_NOT
   ;
 
+keyword
+ : K_SELECT
+
+ | K_ELEMENT
+ | K_ATTRIBUTE
+
+ | K_FROM
+
+ | K_AS
+ | K_AT
+
+ | K_INNER
+ | K_LEFT
+ | K_RIGHT
+ | K_FULL
+ | K_OUTER
+ | K_JOIN
+ | K_CORRELATE
+ | K_ON
+ | K_FLATTEN
+
+ | K_WHERE
+
+ | K_GROUP
+ | K_BY
+
+ | K_HAVING
+
+ | K_UNION
+ | K_INTERSECT
+ | K_EXCEPT
+ | K_ALL
+
+ | K_ORDER
+ | K_ASC
+ | K_DESC
+
+ | K_LIMIT
+
+ | K_OFFSET
+
+ | K_NOT
+ | K_AND
+ | K_OR
+
+ | K_SUM
+ | K_MIN
+ | K_MAX
+ | K_AVG
+ | K_COUNT
+ ;
+
 value
   : STRLITERAL
   | NUMBER
@@ -96,14 +148,17 @@ value
 
 variable
   : VAR_NAME
+  | keyword
   ; 
 
 func_name
   : VAR_NAME
+  | keyword
   ;
 
 attr_name
   : VAR_NAME
+  |keyword
   ;
 
 /* Lexer rules */

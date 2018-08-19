@@ -60,7 +60,6 @@ const EXPRESSIONS = {
 
   /* aggregate operator */
   avg: function(input, envir) {
-
     // case of dealing with an aggregate function.
     if (Array.isArray(input))
       return (input.reduce((a,b) => a + b, 0)) / (input.length);
@@ -73,16 +72,10 @@ const EXPRESSIONS = {
         massage: "illegal aggregate argument"
       };
 
-    input.isExpr = true;
-    var sum = 0;
-    var cnt = 0;
-    for (let item of envir.group) {
-      sum += evalExprQuery(input, item);
-      cnt++;
-    }
+    var sum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
+    var cnt = envir.group.length;
 
     return sum / cnt;
-
   },
 
   count: function(input, envir) {
@@ -113,12 +106,10 @@ const EXPRESSIONS = {
         massage: "illegal aggregate argument"
       };
 
-    var mimimum = evalExprQuery(input, envir.group[0]);
-    for(let item of envir.group) {
-      let curr = evalExprQuery(input, item);
+    input = JSON.parse(input);
 
-      if(curr < mimimum) mimimum = curr;
-    }
+    var mimimum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => curr < acc ? curr : acc);
+
     return mimimum;
   },
 
@@ -133,12 +124,10 @@ const EXPRESSIONS = {
         massage: "illegal aggregate argument"
       };
 
-    var maximum = evalExprQuery(input, envir.group[0]);
-    for(let item of envir.group) {
-      let curr = evalExprQuery(input, item);
+    input = JSON.parse(input);
 
-      if(curr > maximum) maximum = curr;
-    }
+    var maximum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => curr > acc ? curr : acc);
+
     return maximum;
   },
 
@@ -156,7 +145,7 @@ const EXPRESSIONS = {
         massage: "illegal aggregate argument"
       };
 
-    input.isExpr = true;
+    input = JSON.parse(input);
 
     return envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
   },
@@ -262,7 +251,7 @@ function evalExprQuery(expr, envir) {
     else {
       evaluatedParam[i] = expr.param[i];
     }
-
+console.log(evaluatedParam);
   let result = EXPRESSIONS[expr.func](...evaluatedParam, envir);
   // console.log("Eval result: ");
   // console.log(result);
@@ -278,7 +267,7 @@ function evalExprQuery(expr, envir) {
 function swfQuery(db, query) {
   var outputFrom = evalFrom(db, query.from_clause);
   var outputWhere = evalWhere(db, outputFrom, query.where_clause);
-  var outputGroupby = evalGroupBy(db, outputFrom, query.groupbyClause);
+  var outputGroupby = evalGroupBy(db, outputFrom, query.groupby_clause);
   var outputSelect = evalSelect(db, outputGroupby, query.select_clause);
   return outputSelect;
 }
@@ -757,7 +746,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
   }, ...]*/
 function evalGroupBy(envir, prevBindOutput, groupbyClause) {
 
-  if(groupbyClause === null){
+  if(groupbyClause === null || groupbyClause === undefined){
     return prevBindOutput;
   }
 

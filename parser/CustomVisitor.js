@@ -376,6 +376,10 @@ CustomVisitor.prototype.visitUnary_op = function(ctx) {
   return result;
 };
 
+// Visit a parse tree produced by SqlppParser#keyword.
+CustomVisitor.prototype.visitKeyword = function(ctx) {
+  return this.visitChildren(ctx);
+};
 
 // Visit a parse tree produced by SqlppParser#value.
 CustomVisitor.prototype.visitValue = function(ctx) {
@@ -477,49 +481,37 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
         };
       }
       else {
-        var exprResult = {
+        result.param = [{
           func: 'variable',
           param: ['group'],
           isExpr: true
-        };
+        }];
+
+        return result;
       }
-    } 
+    }
   }
 
   else {
     var exprResult = this.visit(ctx.expr());
 
     if (exprResult.func !== 'swf') {
-      exprResult.func.isExpr = undefined;
-      // exprResult = {
-      //   func: 'swf',
-      //   param: [{
-      //     select_clause: {
-      //       selectType: 0,
-      //       selectExpr: {
-      //         func: 'path',
-      //         param: ['___group', exprResult],
-      //         isExpr: true
-      //       }
-      //     },
-      //     from_clause: {
-      //       opType: 0,
-      //       bindFrom: {
-      //         func: 'variable',
-      //         param: ['group'],
-      //         isExpr: true
-      //       },
-      //       bindTo: '___group'
-      //     }
-      //   }],
-      //   isExpr: true
-      // };
+
+
+      result.param = [JSON.stringify(exprResult)];
+      //result.param[0].isExpr = undefined;
+      
+//console.log(result.param[0].isExpr);
+console.log(result.param[0])
+      return result;
+    }
+    else{
+      result.param = [exprResult];
+
+      return result;
     }
   }
 
-  result.param = [exprResult];
-
-  return result;
 };
 
 exports.CustomVisitor = CustomVisitor;
