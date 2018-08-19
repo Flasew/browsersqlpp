@@ -467,9 +467,9 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   
   var result = {func: ctx.aggr.text.toLowerCase(), isExpr: true};
   
-  if (ctx.expr() !== null) {
+  if (ctx.expr() === null) {
   
-    if (exprResult.AST() !== null || exprResult.K_GROUP() !== null) {
+    if (ctx.AST() !== null || ctx.K_GROUP() !== null) {
       if (result.func !== 'count') {
         throw {
           name: 'Aggr(*) not count',
@@ -487,25 +487,33 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   }
 
   else {
-    if (exprResult.select_clause === undefined) {
+    var exprResult = this.visit(ctx.expr());
+
+    
+
+    if (exprResult.func !== 'swf') {
       exprResult = {
-        select_clause: {
-          selectType: 0,
-          selectExpr: {
-            func: 'path',
-            param: ['___group', exprResult],
-            isExpr: true
-          }
-        },
-        from_clause: {
-          opType: 0,
-          bindFrom: {
-            func: 'variable',
-            param: ['group'],
-            isExpr: true
+        func: 'swf',
+        param: [{
+          select_clause: {
+            selectType: 0,
+            selectExpr: {
+              func: 'path',
+              param: ['___group', exprResult],
+              isExpr: true
+            }
           },
-          bindTo: '___group'
-        }
+          from_clause: {
+            opType: 0,
+            bindFrom: {
+              func: 'variable',
+              param: ['group'],
+              isExpr: true
+            },
+            bindTo: '___group'
+          }
+        }],
+        isExpr: true
       };
     }
   }

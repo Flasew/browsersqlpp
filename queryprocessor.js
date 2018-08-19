@@ -59,7 +59,7 @@ const EXPRESSIONS = {
   neg: arg => -arg,
 
   /* aggregate operator */
-  avg: collection => sum(collection) / count(collection),
+  avg: collection => (collection.reduce((a,b) => a + b, 0)) / (collection.length),
 
   count: collection => collection.length,
 
@@ -67,7 +67,11 @@ const EXPRESSIONS = {
 
   max: collection => collection.reduce((acc, curr) => curr > acc ? curr : acc),
 
-  sum: collection => collection.reduce((a,b) => a + b, 0),
+  sum: function(collection){
+    console.log(collection);
+    return collection.reduce((a,b) => a + b, 0);
+  },
+  //collection => collection.reduce((a,b) => a + b, 0),
 
   /* other */
 
