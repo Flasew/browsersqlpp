@@ -59,17 +59,106 @@ const EXPRESSIONS = {
   neg: arg => -arg,
 
   /* aggregate operator */
-  avg: collection => (collection.reduce((a,b) => a + b, 0)) / (collection.length),
+  avg: function(input, envir) {
 
-  count: collection => collection.length,
+    // case of dealing with an aggregate function.
+    if (Array.isArray(input))
+      return (input.reduce((a,b) => a + b, 0)) / (input.length);
 
-  min: collection => collection.reduce((acc, curr) => curr < acc ? curr : acc),
+    // other wise, the input is of SQL format, deal with the input expression
+    // this requires the "group" attribute of the envir argument.
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
 
-  max: collection => collection.reduce((acc, curr) => curr > acc ? curr : acc),
+    input.isExpr = true;
+    var sum = 0;
+    var cnt = 0;
+    for (let item of envir.group) {
+      sum += evalExprQuery(input, item);
+      cnt++;
+    }
 
-  sum: function(collection){
-    console.log(collection);
-    return collection.reduce((a,b) => a + b, 0);
+    return sum / cnt;
+
+  },
+
+  count: function(input, envir) {
+
+    // case of dealing with an aggregate function.
+    if (Array.isArray(input))
+      return input.length;
+
+    // other wise, the input is of SQL format, deal with the input expression
+    // this requires the "group" attribute of the envir argument.
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    return envir.group.length;
+  },
+
+  min: function(input, envir) {
+    if(Array.isArray(input)){
+       return (input.reduce((acc, curr) => curr < acc ? curr : acc));
+    }
+
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    var mimimum = evalExprQuery(input, envir.group[0]);
+    for(let item of envir.group) {
+      let curr = evalExprQuery(input, item);
+
+      if(curr < mimimum) mimimum = curr;
+    }
+    return mimimum;
+  },
+
+  max: function(input, envir) {
+    if(Array.isArray(input)) {
+      return (input.reduce((acc, curr) => curr > acc ? curr : acc));
+    }
+
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    var maximum = evalExprQuery(input, envir.group[0]);
+    for(let item of envir.group) {
+      let curr = evalExprQuery(input, item);
+
+      if(curr > maximum) maximum = curr;
+    }
+    return maximum;
+  },
+
+  sum: function(input, envir) {
+
+    // case of dealing with an aggregate function.
+    if (Array.isArray(input))
+      return input.reduce((acc, curr) => acc + curr, 0);
+
+    // other wise, the input is of SQL format, deal with the input expression
+    // this requires the "group" attribute of the envir argument.
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    input.isExpr = true;
+
+    return envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
   },
   //collection => collection.reduce((a,b) => a + b, 0),
 

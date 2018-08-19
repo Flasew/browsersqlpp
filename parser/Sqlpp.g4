@@ -61,6 +61,7 @@ offset_clause
 
 expr
   : '(' swf_query ')'                                                               #ExprNestSWF    // Nested query
+  | swf_query                                                                       #ExprNestSWF
   | value                                                                           #ExprVal        // literal values
   | variable                                                                        #ExprVari       // variable
   | expr '.' attr_name                                                              #ExprPath       // path

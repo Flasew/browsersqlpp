@@ -473,7 +473,7 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
       if (result.func !== 'count') {
         throw {
           name: 'Aggr(*) not count',
-          message: '\'*\' can only be used with count.'
+          message: '\'*\' or group can only be used with count.'
         };
       }
       else {
@@ -489,32 +489,31 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   else {
     var exprResult = this.visit(ctx.expr());
 
-    
-
     if (exprResult.func !== 'swf') {
-      exprResult = {
-        func: 'swf',
-        param: [{
-          select_clause: {
-            selectType: 0,
-            selectExpr: {
-              func: 'path',
-              param: ['___group', exprResult],
-              isExpr: true
-            }
-          },
-          from_clause: {
-            opType: 0,
-            bindFrom: {
-              func: 'variable',
-              param: ['group'],
-              isExpr: true
-            },
-            bindTo: '___group'
-          }
-        }],
-        isExpr: true
-      };
+      exprResult.func.isExpr = undefined;
+      // exprResult = {
+      //   func: 'swf',
+      //   param: [{
+      //     select_clause: {
+      //       selectType: 0,
+      //       selectExpr: {
+      //         func: 'path',
+      //         param: ['___group', exprResult],
+      //         isExpr: true
+      //       }
+      //     },
+      //     from_clause: {
+      //       opType: 0,
+      //       bindFrom: {
+      //         func: 'variable',
+      //         param: ['group'],
+      //         isExpr: true
+      //       },
+      //       bindTo: '___group'
+      //     }
+      //   }],
+      //   isExpr: true
+      // };
     }
   }
 
