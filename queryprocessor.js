@@ -817,7 +817,7 @@ button.addEventListener("click", function(){
   console.log(outputGroupBy);
   groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
 
-  var outputSelect = evalSelect(db, outputWhere, ast.select_clause);
+  var outputSelect = evalSelect(db, outputGroupBy, ast.select_clause);
   console.log("Output of SELECT Clause:");
   console.log(outputSelect);
   selectArea.innerHTML = JSON.stringify(outputSelect);

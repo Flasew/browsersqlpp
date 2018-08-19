@@ -466,23 +466,25 @@ CustomVisitor.prototype.visitOffset_clause = function(ctx) {
 SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   
   var result = {func: ctx.aggr.text.toLowerCase(), isExpr: true};
-  var exprResult = this.visit(ctx.expr());
   
-  if (exprResult === '*') {
-    if (result.func !== 'count') {
-      throw {
-        name: 'Aggr(*) not count',
-        message: '\'*\' can only be used with count.'
-      };
-    }
-    else {
-      var exprResult = {
-        func: 'variable',
-        param: ['group'],
-        isExpr: true
-      };
-    }
-  } 
+  if (ctx.expr() !== null) {
+  
+    if (exprResult.AST() !== null || exprResult.K_GROUP() !== null) {
+      if (result.func !== 'count') {
+        throw {
+          name: 'Aggr(*) not count',
+          message: '\'*\' can only be used with count.'
+        };
+      }
+      else {
+        var exprResult = {
+          func: 'variable',
+          param: ['group'],
+          isExpr: true
+        };
+      }
+    } 
+  }
 
   else {
     if (exprResult.select_clause === undefined) {
@@ -491,10 +493,7 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
           selectType: 0,
           selectExpr: {
             func: 'path',
-            param: [
-              '___group',
-              exprResult
-            ],
+            param: ['___group', exprResult],
             isExpr: true
           }
         },
@@ -507,7 +506,7 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
           },
           bindTo: '___group'
         }
-      }
+      };
     }
   }
 

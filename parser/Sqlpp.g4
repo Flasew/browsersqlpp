@@ -60,25 +60,25 @@ offset_clause
   ;
 
 expr
-  : '(' swf_query ')'                                                         #ExprNestSWF    // Nested query
-  | value                                                                     #ExprVal        // literal values
-  | variable                                                                  #ExprVari       // variable
-  | expr '.' attr_name                                                        #ExprPath       // path
-  | expr '[' expr ']'                                                         #ExprArrAcs     // array access (TODO)
-  | unary_op expr                                                             #ExprUnary      // operators & function call
-  | lhs=expr op='||'                         rhs=expr                         #ExprBinary
-  | lhs=expr op=( '*' | '/' | '%' )          rhs=expr                         #ExprBinary
-  | lhs=expr op=( '+' | '-' )                rhs=expr                         #ExprBinary
-  | lhs=expr op=( '<' | '<=' | '>' | '>=' )  rhs=expr                         #ExprBinary
-  | lhs=expr op=( '=' | '==' | '!=' | '<>' ) rhs=expr                         #ExprBinary
-  | lhs=expr op=K_AND                        rhs=expr                         #ExprBinary
-  | lhs=expr op=K_OR                         rhs=expr                         #ExprBinary
-  | aggr=(K_SUM | K_MAX | K_MIN | K_COUNT | K_AVG) '(' expr ')'   #ExprAggr
-  | func_name '(' expr? (',' expr)* ')'                                       #ExprFunc
-  | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'                   #ExprObj        // object 
-  | '[' expr? (',' expr)* ']'                                                 #ExprArr        // array
-  | '{{' expr? (',' expr)* '}}'                                               #ExprBag        // bag (TODO)
-  | '(' expr ')'                                                              #ExprParan
+  : '(' swf_query ')'                                                               #ExprNestSWF    // Nested query
+  | value                                                                           #ExprVal        // literal values
+  | variable                                                                        #ExprVari       // variable
+  | expr '.' attr_name                                                              #ExprPath       // path
+  | expr '[' expr ']'                                                               #ExprArrAcs     // array access (TODO)
+  | unary_op expr                                                                   #ExprUnary      // operators & function call
+  | lhs=expr op='||'                         rhs=expr                               #ExprBinary
+  | lhs=expr op=( '*' | '/' | '%' )          rhs=expr                               #ExprBinary
+  | lhs=expr op=( '+' | '-' )                rhs=expr                               #ExprBinary
+  | lhs=expr op=( '<' | '<=' | '>' | '>=' )  rhs=expr                               #ExprBinary
+  | lhs=expr op=( '=' | '==' | '!=' | '<>' ) rhs=expr                               #ExprBinary
+  | lhs=expr op=K_AND                        rhs=expr                               #ExprBinary
+  | lhs=expr op=K_OR                         rhs=expr                               #ExprBinary
+  | aggr=(K_SUM | K_MAX | K_MIN | K_COUNT | K_AVG) '(' (K_GROUP | AST | expr) ')'   #ExprAggr
+  | func_name '(' expr? (',' expr)* ')'                                             #ExprFunc
+  | '{' (attr_name ':' expr)? (',' attr_name ':' expr)* '}'                         #ExprObj        // object 
+  | '[' expr? (',' expr)* ']'                                                       #ExprArr        // array
+  | '{{' expr? (',' expr)* '}}'                                                     #ExprBag        // bag (TODO)
+  | '(' expr ')'                                                                    #ExprParan
   ;
 
 unary_op
@@ -168,6 +168,10 @@ NUMBER
   | '.' DIGIT+ ( E [-+]? DIGIT+ )?
   ;
 
+AST
+  : '*'
+  ;
+
 VAR_NAME
   : [a-zA-Z_] [a-zA-Z0-9_]*
   ;
@@ -175,6 +179,7 @@ VAR_NAME
 WS
   : [ \u000B\t\r\n] -> channel(HIDDEN)
   ;
+
 
 
 fragment DIGIT : [0-9];
