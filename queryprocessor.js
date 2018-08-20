@@ -860,7 +860,7 @@ function evalOrderBy(envir, prevBindOutput, orderbyClause) {
       }
 
       // order
-      return conditoin.asc ? ((t1.res < t2.res) ? -1 : 1) : ((t1.res < t2.res) ? 1 : -1);
+      return conditoin.asc ? ((t1res < t2res) ? -1 : 1) : ((t1res < t2res) ? 1 : -1);
 
     }
 
