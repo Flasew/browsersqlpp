@@ -294,7 +294,7 @@ function evalFrom(envir, fromClause){
  */
 function evalWhere(envir, prevBindOutput, whereClause) {
 
-  if(whereClause === null){
+  if(whereClause === null || whereClause === undefined){
     return prevBindOutput;
   }
 
