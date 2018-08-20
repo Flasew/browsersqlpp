@@ -270,8 +270,11 @@ function swfQuery(db, query) {
   var outputFrom = evalFrom(db, query.from_clause);
   var outputWhere = evalWhere(db, outputFrom, query.where_clause);
   var outputGroupBy = evalGroupBy(db, outputWhere, query.groupby_clause);
-  var outputHaving = evalHaving(db, outputGroupBy, query.groupby_clause);
-  var outputSelect = evalSelect(db, outputHaving, query.select_clause);
+  var outputHaving = evalHaving(db, outputGroupBy, query.having_clause);
+  var outputOrderBy = evalOrderBy(db, outputHaving, query.orderby_clause);
+  var outputOffset = evalOffset(db, outputOrderBy, query.offset_clause);
+  var outputLimit = evalLimit(db, outputOffset, query.limit_clause);
+  var outputSelect = evalSelect(db, outputLimit, query.select_clause);
   return outputSelect;
 }
 
