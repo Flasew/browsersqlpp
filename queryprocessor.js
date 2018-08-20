@@ -251,7 +251,9 @@ function evalExprQuery(expr, envir) {
     else {
       evaluatedParam[i] = expr.param[i];
     }
-console.log(evaluatedParam);
+
+  //console.log(evaluatedParam);
+
   let result = EXPRESSIONS[expr.func](...evaluatedParam, envir);
   // console.log("Eval result: ");
   // console.log(result);
@@ -267,8 +269,8 @@ console.log(evaluatedParam);
 function swfQuery(db, query) {
   var outputFrom = evalFrom(db, query.from_clause);
   var outputWhere = evalWhere(db, outputFrom, query.where_clause);
-  var outputGroupby = evalGroupBy(db, outputWhere, query.groupby_clause);
-  var outputHaving = evalHaving(db, outputGroupby, query.groupby_clause);
+  var outputGroupBy = evalGroupBy(db, outputWhere, query.groupby_clause);
+  var outputHaving = evalHaving(db, outputGroupBy, query.groupby_clause);
   var outputSelect = evalSelect(db, outputHaving, query.select_clause);
   return outputSelect;
 }
@@ -848,19 +850,19 @@ function evalOrderBy(envir, prevBindOutput, orderbyClause) {
 
   // construct the comparison function. 
   var comp = function(t1, t2) {
-
+console.log(orderbyClause);
     for (let condition of orderbyClause) {
 
       // case of equal: go to the next condition
-      let t1res = evalExprQuery(condition, Object.assign({}, t1, envir));
-      let t2res = evalExprQuery(condition, Object.assign({}, t2, envir));
+      let t1res = evalExprQuery(condition.expr, Object.assign({}, t1, envir));
+      let t2res = evalExprQuery(condition.expr, Object.assign({}, t2, envir));
 
       if (t1res === t2res) {
         continue;
       }
 
       // order
-      return conditoin.asc ? ((t1res < t2res) ? -1 : 1) : ((t1res < t2res) ? 1 : -1);
+      return condition.asc ? ((t1res < t2res) ? -1 : 1) : ((t1res > t2res) ? -1 : 1);
 
     }
 
@@ -914,6 +916,8 @@ var button = document.getElementById("BUTTON");
 var fromArea = document.getElementById("FROM");
 var whereArea = document.getElementById("WHERE");
 var groupbyArea = document.getElementById("GROUPBY");
+var havingArea = document.getElementById("HAVING");
+var orderbyArea = document.getElementById("ORDERBY");
 var selectArea = document.getElementById("SELECT");
 
 button.addEventListener("click", function(){
@@ -939,23 +943,33 @@ button.addEventListener("click", function(){
   //var clause = JSON.parse(tree.value);
 
   var outputFrom = evalFrom(db, ast.from_clause);
-  console.log("Output of FROM Clause:");
-  console.log(outputFrom);
+  //console.log("Output of FROM Clause:");
+  //console.log(outputFrom);
   fromArea.innerHTML = JSON.stringify(outputFrom);
 
   var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
-  console.log("Output of WHERE Clause:");
-  console.log(outputWhere);
+  //console.log("Output of WHERE Clause:");
+  //console.log(outputWhere);
   whereArea.innerHTML = JSON.stringify(outputWhere);
 
   var outputGroupBy = evalGroupBy(db, outputWhere, ast.groupby_clause);
-  console.log("Output of GROUP BY Clause:");
-  console.log(outputGroupBy);
+  //console.log("Output of GROUP BY Clause:");
+  //console.log(outputGroupBy);
   groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
 
-  var outputSelect = evalSelect(db, outputGroupBy, ast.select_clause);
-  console.log("Output of SELECT Clause:");
-  console.log(outputSelect);
+  var outputHaving = evalHaving(db, outputGroupBy, ast.having_clause);
+  //console.log("Output of HAVING Clause:");
+  //console.log(outputHaving);
+  havingArea.innerHTML = JSON.stringify(outputHaving);
+
+  var outputOrderBy = evalOrderBy(db, outputHaving, ast.orderby_clause);
+  //console.log("Output of ORDER BY Clause:");
+  //console.log(outputOrderBy);
+  orderbyArea.innerHTML = JSON.stringify(outputOrderBy);
+
+  var outputSelect = evalSelect(db, outputOrderBy, ast.select_clause);
+  //console.log("Output of SELECT Clause:");
+  //console.log(outputSelect);
   selectArea.innerHTML = JSON.stringify(outputSelect);
 
   //console.log(outputSelect);

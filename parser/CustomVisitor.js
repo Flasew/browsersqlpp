@@ -25,7 +25,8 @@ CustomVisitor.prototype.visitSwf_query = function(ctx) {
     from_clause:    this.visit(ctx.from_clause()),
     where_clause:   ctx.where_clause() === null ? null : this.visit(ctx.where_clause()),
     groupby_clause: ctx.groupby_clause() === null ? null : this.visit(ctx.groupby_clause()),
-    having_clause:  ctx.having_clause() === null ? null : this.visit(ctx.having_clause())
+    having_clause:  ctx.having_clause() === null ? null : this.visit(ctx.having_clause()),
+    orderby_clause: ctx.orderby_clause() === null ? null : this.visit(ctx.orderby_clause())
   };
 
   if (result.groupby_clause !== undefined) {
@@ -256,7 +257,7 @@ CustomVisitor.prototype.visitExprBinary = function(ctx) {
     case 'or' :   result.func = 'or' ;    break;
     default: throw {
       name: 'WORNG',
-      Message: ctx.op.text.toLowerCase()
+      message: ctx.op.text.toLowerCase()
     };
   }
 
@@ -464,13 +465,20 @@ CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
 
     result[resultPos] = {
       expr: this.visit(ctx.children[i++]),
+      asc: true
     };
 
-    if (ctx.children[i] !== undefined && ctx.children[i].getText() !== ',') {
-      result[resultPos].asc = ctx.children[i].getText().toLowerCase === 'asc';
-    }
-    else {
-      result[resultPos].asc = true;
+    if (ctx.children[i] !== undefined) {
+      let orderDefine = ctx.children[i].getText().toLowerCase();
+      console.log(orderDefine);
+      if(orderDefine === 'desc')
+        result[resultPos].asc = false;
+      else if(orderDefine !== "asc" && orderDefine !== ","){
+        throw{
+          name: 'InvalidOrderBy',
+          message: 'Order needs to be specified correctly(asc/desc).'
+        };
+      }
     }
 
     resultPos++;
