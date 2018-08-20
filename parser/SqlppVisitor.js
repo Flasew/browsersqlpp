@@ -96,8 +96,38 @@ SqlppVisitor.prototype.visitWhere_clause = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprObj.
-SqlppVisitor.prototype.visitExprObj = function(ctx) {
+// Visit a parse tree produced by SqlppParser#groupby_clause.
+SqlppVisitor.prototype.visitGroupby_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#having_clause.
+SqlppVisitor.prototype.visitHaving_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#setop_clause.
+SqlppVisitor.prototype.visitSetop_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#orderby_clause.
+SqlppVisitor.prototype.visitOrderby_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#limit_clause.
+SqlppVisitor.prototype.visitLimit_clause = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#offset_clause.
+SqlppVisitor.prototype.visitOffset_clause = function(ctx) {
   return this.visitChildren(ctx);
 };
 
@@ -108,14 +138,38 @@ SqlppVisitor.prototype.visitExprBag = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprBinary.
-SqlppVisitor.prototype.visitExprBinary = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprNestSWF.
+SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
   return this.visitChildren(ctx);
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprNestSWF.
-SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprAggr.
+SqlppVisitor.prototype.visitExprAggr = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprArrAcs.
+SqlppVisitor.prototype.visitExprArrAcs = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprParan.
+SqlppVisitor.prototype.visitExprParan = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprObj.
+SqlppVisitor.prototype.visitExprObj = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
+// Visit a parse tree produced by SqlppParser#ExprBinary.
+SqlppVisitor.prototype.visitExprBinary = function(ctx) {
   return this.visitChildren(ctx);
 };
 
@@ -128,12 +182,6 @@ SqlppVisitor.prototype.visitExprUnary = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprFunc.
 SqlppVisitor.prototype.visitExprFunc = function(ctx) {
-  return this.visitChildren(ctx);
-};
-
-
-// Visit a parse tree produced by SqlppParser#ExprArrAcs.
-SqlppVisitor.prototype.visitExprArrAcs = function(ctx) {
   return this.visitChildren(ctx);
 };
 
@@ -162,14 +210,14 @@ SqlppVisitor.prototype.visitExprArr = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprParan.
-SqlppVisitor.prototype.visitExprParan = function(ctx) {
+// Visit a parse tree produced by SqlppParser#unary_op.
+SqlppVisitor.prototype.visitUnary_op = function(ctx) {
   return this.visitChildren(ctx);
 };
 
 
-// Visit a parse tree produced by SqlppParser#unary_op.
-SqlppVisitor.prototype.visitUnary_op = function(ctx) {
+// Visit a parse tree produced by SqlppParser#keyword.
+SqlppVisitor.prototype.visitKeyword = function(ctx) {
   return this.visitChildren(ctx);
 };
 

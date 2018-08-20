@@ -4,8 +4,8 @@ const SqlppParser = require('./SqlppParser');
 var SqlppVisitor = require('./SqlppVisitor').SqlppVisitor;
 
 CustomVisitor = function() {
-    SqlppVisitor.call(this); // inherit default listener
-    return this;
+  SqlppVisitor.call(this); // inherit default listener
+  return this;
 };
 
 CustomVisitor.prototype = Object.create(SqlppVisitor.prototype);
@@ -20,11 +20,25 @@ CustomVisitor.prototype.visitQuery = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#swf_query.
 CustomVisitor.prototype.visitSwf_query = function(ctx) {
-  return {
-    select_clause: this.visit(ctx.select_clause()),
-    from_clause:   this.visit(ctx.from_clause()),
-    where_clause:  ctx.where_clause() === null ? true : this.visit(ctx.where_clause())
+  var result = {
+    select_clause:  this.visit(ctx.select_clause()),
+    from_clause:    this.visit(ctx.from_clause()),
+    where_clause:   ctx.where_clause() === null ? null : this.visit(ctx.where_clause()),
+    groupby_clause: ctx.groupby_clause() === null ? null : this.visit(ctx.groupby_clause()),
+    having_clause:  ctx.having_clause() === null ? null : this.visit(ctx.having_clause()),
+    orderby_clause: ctx.orderby_clause() === null ? null : this.visit(ctx.orderby_clause()),
+    limit_clause:   ctx.limit_clause() === null ? null : this.visit(ctx.limit_clause()),
+    offset_clause:  ctx.offset_clause() === null ? null : this.visit(ctx.offset_clause()),
   };
+
+  if (result.groupby_clause !== undefined) {
+    result.select_clause.aggrQuery = true;
+  } 
+  else {
+    result.select_clause.aggrQuery = false;
+  } 
+
+  return result;
 };
 
 
@@ -89,6 +103,11 @@ CustomVisitor.prototype.visitFromILCorr = function(ctx) {
 
   if (op === 'inner')       op = 6;
   else if (op === 'left')   op = 7;
+  else  
+    throw {
+      name: 'InvalidCorrelateType',
+      message: ctx.op.text + ' is not a valid correlate type'
+    };
 
   return {
     opType: op,
@@ -109,6 +128,10 @@ CustomVisitor.prototype.visitFromJoin = function(ctx) {
     case 'left' : op = 3; break;
     case 'right': op = 4; break;
     case 'full' : op = 5; break;
+    default: throw {
+      name: 'InvalidJoinType',
+      message: ctx.op.text + ' is not a valid join type'
+    };
   }
 
   return {
@@ -154,6 +177,11 @@ CustomVisitor.prototype.visitFromFlatten = function(ctx) {
     result.opType = 9;
   else if (ctx.op.text.toLowerCase() === 'outer')
     result.opType = 10;
+  else 
+    throw {
+      name: 'InvalidFlattenType',
+      message: ctx.op.text + ' is not a valid flatten type'
+    };
 
   result.lhs = {
     opType: 0,
@@ -244,8 +272,8 @@ CustomVisitor.prototype.visitExprBinary = function(ctx) {
     case 'and':   result.func = 'and';    break;
     case 'or' :   result.func = 'or' ;    break;
     default: throw {
-      name: 'WORNG',
-      Message: ctx.op.text.toLowerCase()
+      name: 'InvalidBindaryOperator',
+      message: ctx.op.text + ' is not a valid binary operator'
     };
   }
 
@@ -282,6 +310,7 @@ CustomVisitor.prototype.visitExprFunc = function(ctx) {
   for (let i = 0; i < ctx.expr().length; i++) {
     result.param[i] = this.visit(ctx.expr()[i]);
   }
+
 
   return result;
 };
@@ -355,6 +384,10 @@ CustomVisitor.prototype.visitUnary_op = function(ctx) {
     case '-': result.func = 'neg'; break;
     case '~': 
     case 'not': result.func = 'not'; break;
+    default: throw {
+      name: 'InvalidUnaryOperator',
+      message: ctx.op.text + ' is not a valid unary operator'
+    };
   }
 
   result.param = [];
@@ -365,6 +398,10 @@ CustomVisitor.prototype.visitUnary_op = function(ctx) {
   return result;
 };
 
+// Visit a parse tree produced by SqlppParser#keyword.
+CustomVisitor.prototype.visitKeyword = function(ctx) {
+  return this.visitChildren(ctx);
+};
 
 // Visit a parse tree produced by SqlppParser#value.
 CustomVisitor.prototype.visitValue = function(ctx) {
@@ -390,6 +427,164 @@ CustomVisitor.prototype.visitAttr_name = function(ctx) {
   return this.visitChildren(ctx);
 };
 
+// Visit a parse tree produced by SqlppParser#groupby_clause.
+CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
+  var result = [];
+  var resultPos = 0;
 
+  for (var i = 0; i < ctx.children.length; i++) {
+
+    if (ctx.children[i].getText().toLowerCase() === ','
+      || ctx.children[i].getText().toLowerCase() === 'group'
+      || ctx.children[i].getText().toLowerCase() === 'by')
+      continue;
+
+    result[resultPos] = {
+      expr: this.visit(ctx.children[i++])
+    };
+
+    if (ctx.children[i] !== undefined && ctx.children[i].getText().toLowerCase() === 'as'){
+      result[resultPos].as = ctx.children[++i].getText();
+    }
+    else{
+      result[resultPos].as = undefined;
+    }
+
+    resultPos++;
+  }
+  // console.log('sqlsel');
+  // console.log(ctx.expr());
+  // console.log(ctx.attr_name());
+  return result;
+
+};
+
+// Visit a parse tree produced by SqlppParser#having_clause.
+CustomVisitor.prototype.visitHaving_clause = function(ctx) {
+  return this.visit(ctx.expr());
+};
+
+
+// Visit a parse tree produced by SqlppParser#setop_clause.
+// setop = {
+//   opType:
+//   all: 
+//   rhsQuery: 
+// }
+CustomVisitor.prototype.visitSetop_clause = function(ctx) {
+
+  var result = {};
+  
+  switch (ctx.op.text.toLowerCase()) {
+    case 'union':     result.opType = 0; break;
+    case 'intersect': result.opType = 1; break;
+    case 'except':    result.opType = 2; break;
+  }
+
+  result.all = ctx.K_ALL() !== null;
+  result.rhsQuery = this.visit(ctx.swf_query());
+
+  return result;
+
+};
+
+
+// Visit a parse tree produced by SqlppParser#orderby_clause.
+CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
+  var result = [];
+  var resultPos = 0;
+
+  for (var i = 0; i < ctx.children.length; i++) {
+
+    if (ctx.children[i].getText().toLowerCase() === ','
+      || ctx.children[i].getText().toLowerCase() === 'order'
+      || ctx.children[i].getText().toLowerCase() === 'by')
+      continue;
+
+    result[resultPos] = {
+      expr: this.visit(ctx.children[i++]),
+      asc: true
+    };
+
+    if (ctx.children[i] !== undefined) {
+      let orderDefine = ctx.children[i].getText().toLowerCase();
+      console.log(orderDefine);
+      if(orderDefine === 'desc')
+        result[resultPos].asc = false;
+      else if(orderDefine !== "asc" && orderDefine !== ","){
+        throw{
+          name: 'InvalidOrderBy',
+          message: 'Order needs to be specified correctly(asc/desc).'
+        };
+      }
+    }
+
+    resultPos++;
+  }
+  // console.log('sqlsel');
+  // console.log(ctx.expr());
+  // console.log(ctx.attr_name());
+  return result;
+};
+
+
+// Visit a parse tree produced by SqlppParser#limit_clause.
+CustomVisitor.prototype.visitLimit_clause = function(ctx) {
+  return this.visit(ctx.expr());
+};
+
+
+// Visit a parse tree produced by SqlppParser#offset_clause.
+CustomVisitor.prototype.visitOffset_clause = function(ctx) {
+  return this.visit(ctx.expr());
+};
+
+// Visit a parse tree produced by SqlppParser#ExprAggr.
+SqlppVisitor.prototype.visitExprAggr = function(ctx) {
+  
+  var result = {func: ctx.aggr.text.toLowerCase(), isExpr: true};
+  
+  if (ctx.expr() === null) {
+  
+    if (ctx.AST() !== null || ctx.K_GROUP() !== null) {
+      if (result.func !== 'count') {
+        throw {
+          name: 'Aggr(*) not count',
+          message: '\'*\' or group can only be used with count.'
+        };
+      }
+      else {
+        result.param = [{
+          func: 'variable',
+          param: ['group'],
+          isExpr: true
+        }];
+
+        return result;
+      }
+    }
+  }
+
+  else {
+    var exprResult = this.visit(ctx.expr());
+
+    if (exprResult.func !== 'swf') {
+
+
+      result.param = [JSON.stringify(exprResult)];
+      //result.param[0].isExpr = undefined;
+      
+//console.log(result.param[0].isExpr);
+console.log(result.param[0])
+      return result;
+    }
+    else{
+      result.param = [exprResult];
+
+      return result;
+    }
+  }
+
+};
 
 exports.CustomVisitor = CustomVisitor;
