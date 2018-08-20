@@ -272,7 +272,7 @@ CustomVisitor.prototype.visitExprBinary = function(ctx) {
     case 'and':   result.func = 'and';    break;
     case 'or' :   result.func = 'or' ;    break;
     default: throw {
-      name: 'InvalidBindaryOperator,
+      name: 'InvalidBindaryOperator',
       message: ctx.op.text + ' is not a valid binary operator'
     };
   }
@@ -385,7 +385,7 @@ CustomVisitor.prototype.visitUnary_op = function(ctx) {
     case '~': 
     case 'not': result.func = 'not'; break;
     default: throw {
-      name: 'InvalidUnaryOperator,
+      name: 'InvalidUnaryOperator',
       message: ctx.op.text + ' is not a valid unary operator'
     };
   }
