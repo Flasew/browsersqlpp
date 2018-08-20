@@ -303,7 +303,7 @@ function evalFrom(envir, fromClause){
  */
 function evalWhere(envir, prevBindOutput, whereClause) {
 
-  if(whereClause === null || whereClause === undefined){
+  if(whereClause === undefined || whereClause === null){
     return prevBindOutput;
   }
 
@@ -756,7 +756,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
   }, ...]*/
 function evalGroupBy(envir, prevBindOutput, groupbyClause) {
 
-  if(groupbyClause === null || groupbyClause === undefined){
+  if(groupbyClause === undefined || groupbyClause === null){
     return prevBindOutput;
   }
 
@@ -828,7 +828,7 @@ function evalGroupBy(envir, prevBindOutput, groupbyClause) {
 
 function evalHaving(envir, prevBindOutput, havingClause) {
 
-  if(havingClause === null){
+  if(havingClause === undefined || havingClause === null){
     return prevBindOutput;
   }
 
@@ -851,7 +851,7 @@ function evalHaving(envir, prevBindOutput, havingClause) {
 // }, ...]
 function evalOrderBy(envir, prevBindOutput, orderbyClause) {
 
-  if(orderbyClause === null){
+  if(orderbyClause === undefined || orderbyClause === null){
     return prevBindOutput;
   }
 
@@ -879,6 +879,53 @@ console.log(orderbyClause);
   return prevBindOutput.sort(comp);
   
 }
+
+function evalOffset(envir, prevBindOutput, offsetClause){
+  if(offsetClause === undefined || offsetClause === null){
+    return prevBindOutput;
+  }
+
+  var shift = evalExprQuery(offsetClause, envir);
+
+  if(typeof(shift) !== "number"){
+    throw{
+      name: "invalidOffsetClause",
+      message: 'Value of offset clause must be a number'
+    };
+  }
+
+  for(let i = 0; i < shift; i++){
+    prevBindOutput.shift();
+  }
+
+  return prevBindOutput;
+}
+
+function evalLimit(envir, prevBindOutput, limitClause){
+  if(limitClause === undefined || limitClause === null){
+    return prevBindOutput;
+  }
+
+  var limit = evalExprQuery(limitClause, envir);
+
+  if(typeof(limit) !== "number"){
+    throw{
+      name: "invalidLimitClause",
+      message: 'Value of limit clause must be a number'
+    };
+  }
+
+  var result = [];
+
+  for(let i = 0; i < limit; i++){
+    result.push(prevBindOutput[i]);
+  }
+
+  return result;
+}
+
+
+
 /**
  * Convert a path expression back to the string token, for group by case 3
  * @param  {object} pathExpr parsed path expression
@@ -925,6 +972,8 @@ var whereArea = document.getElementById("WHERE");
 var groupbyArea = document.getElementById("GROUPBY");
 var havingArea = document.getElementById("HAVING");
 var orderbyArea = document.getElementById("ORDERBY");
+var offsetArea = document.getElementById("OFFSET");
+var limitArea = document.getElementById("LIMIT");
 var selectArea = document.getElementById("SELECT");
 
 button.addEventListener("click", function(){
@@ -945,39 +994,47 @@ button.addEventListener("click", function(){
   //var listener = new SqlppListener();
   //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
 
-
   var db = JSON.parse(envir.value);
   //var clause = JSON.parse(tree.value);
 
   var outputFrom = evalFrom(db, ast.from_clause);
-  //console.log("Output of FROM Clause:");
-  //console.log(outputFrom);
   fromArea.innerHTML = JSON.stringify(outputFrom);
 
   var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
-  //console.log("Output of WHERE Clause:");
-  //console.log(outputWhere);
   whereArea.innerHTML = JSON.stringify(outputWhere);
 
   var outputGroupBy = evalGroupBy(db, outputWhere, ast.groupby_clause);
-  //console.log("Output of GROUP BY Clause:");
-  //console.log(outputGroupBy);
   groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
 
   var outputHaving = evalHaving(db, outputGroupBy, ast.having_clause);
-  //console.log("Output of HAVING Clause:");
-  //console.log(outputHaving);
   havingArea.innerHTML = JSON.stringify(outputHaving);
 
   var outputOrderBy = evalOrderBy(db, outputHaving, ast.orderby_clause);
-  //console.log("Output of ORDER BY Clause:");
-  //console.log(outputOrderBy);
   orderbyArea.innerHTML = JSON.stringify(outputOrderBy);
 
-  var outputSelect = evalSelect(db, outputOrderBy, ast.select_clause);
-  //console.log("Output of SELECT Clause:");
-  //console.log(outputSelect);
+  var outputOffset = evalOffset(db, outputOrderBy, ast.offset_clause);
+  offsetArea.innerHTML = JSON.stringify(outputOffset);
+
+  var outputLimit = evalLimit(db, outputOffset, ast.limit_clause);
+  limitArea.innerHTML = JSON.stringify(outputLimit);
+
+  var outputSelect = evalSelect(db, outputLimit, ast.select_clause);
   selectArea.innerHTML = JSON.stringify(outputSelect);
 
+  //console.log("Output of FROM Clause:");
+  //console.log(outputFrom);
+  //console.log("Output of WHERE Clause:");
+  //console.log(outputWhere);
+  //console.log("Output of GROUP BY Clause:");
+  //console.log(outputGroupBy);
+  //console.log("Output of HAVING Clause:");
+  //console.log(outputHaving);
+  //console.log("Output of ORDER BY Clause:");
+  //console.log(outputOrderBy);
+  //console.log("Output of OFFSET Clause:");
+  //console.log(outputOffset);
+  //console.log("Output of LIMIT Clause:");
+  //console.log(outputLimit);
+  //console.log("Output of SELECT Clause:");
   //console.log(outputSelect);
 });
