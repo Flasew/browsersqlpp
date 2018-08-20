@@ -31,6 +31,13 @@ const SEL_TYPES = Object.freeze({
 });
 
 const AGGR_FUNC = Object.freeze(['avg', 'sum', 'max', 'min', 'count']);
+
+const SET_OP_TYPES = Object.freeze({
+  UNION:     0,
+  INTERSECT: 1,
+  EXCEPT:    2
+});
+
 /**
  * All possible different expressions used in expression query. 
  * The object 'expression' is essentially a library of different expressions,
