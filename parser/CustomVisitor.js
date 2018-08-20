@@ -4,8 +4,8 @@ const SqlppParser = require('./SqlppParser');
 var SqlppVisitor = require('./SqlppVisitor').SqlppVisitor;
 
 CustomVisitor = function() {
-    SqlppVisitor.call(this); // inherit default listener
-    return this;
+  SqlppVisitor.call(this); // inherit default listener
+  return this;
 };
 
 CustomVisitor.prototype = Object.create(SqlppVisitor.prototype);
@@ -26,7 +26,9 @@ CustomVisitor.prototype.visitSwf_query = function(ctx) {
     where_clause:   ctx.where_clause() === null ? null : this.visit(ctx.where_clause()),
     groupby_clause: ctx.groupby_clause() === null ? null : this.visit(ctx.groupby_clause()),
     having_clause:  ctx.having_clause() === null ? null : this.visit(ctx.having_clause()),
-    orderby_clause: ctx.orderby_clause() === null ? null : this.visit(ctx.orderby_clause())
+    orderby_clause: ctx.orderby_clause() === null ? null : this.visit(ctx.orderby_clause()),
+    limit_clause:   ctx.limit_clause() === null ? null : this.visit(ctx.limit_clause()),
+    offset_clause:  ctx.offset_clause() === null ? null : this.visit(ctx.offset_clause()),
   };
 
   if (result.groupby_clause !== undefined) {
@@ -101,6 +103,11 @@ CustomVisitor.prototype.visitFromILCorr = function(ctx) {
 
   if (op === 'inner')       op = 6;
   else if (op === 'left')   op = 7;
+  else  
+    throw {
+      name: 'InvalidCorrelateType',
+      message: ctx.op.text + ' is not a valid correlate type'
+    };
 
   return {
     opType: op,
@@ -121,6 +128,10 @@ CustomVisitor.prototype.visitFromJoin = function(ctx) {
     case 'left' : op = 3; break;
     case 'right': op = 4; break;
     case 'full' : op = 5; break;
+    default: throw {
+      name: 'InvalidJoinType',
+      message: ctx.op.text + ' is not a valid join type'
+    };
   }
 
   return {
@@ -166,6 +177,11 @@ CustomVisitor.prototype.visitFromFlatten = function(ctx) {
     result.opType = 9;
   else if (ctx.op.text.toLowerCase() === 'outer')
     result.opType = 10;
+  else 
+    throw {
+      name: 'InvalidFlattenType',
+      message: ctx.op.text + ' is not a valid flatten type'
+    };
 
   result.lhs = {
     opType: 0,
@@ -256,8 +272,8 @@ CustomVisitor.prototype.visitExprBinary = function(ctx) {
     case 'and':   result.func = 'and';    break;
     case 'or' :   result.func = 'or' ;    break;
     default: throw {
-      name: 'WORNG',
-      message: ctx.op.text.toLowerCase()
+      name: 'InvalidBindaryOperator,
+      message: ctx.op.text + ' is not a valid binary operator'
     };
   }
 
@@ -368,6 +384,10 @@ CustomVisitor.prototype.visitUnary_op = function(ctx) {
     case '-': result.func = 'neg'; break;
     case '~': 
     case 'not': result.func = 'not'; break;
+    default: throw {
+      name: 'InvalidUnaryOperator,
+      message: ctx.op.text + ' is not a valid unary operator'
+    };
   }
 
   result.param = [];
@@ -446,8 +466,26 @@ CustomVisitor.prototype.visitHaving_clause = function(ctx) {
 
 
 // Visit a parse tree produced by SqlppParser#setop_clause.
+// setop = {
+//   opType:
+//   all: 
+//   rhsQuery: 
+// }
 CustomVisitor.prototype.visitSetop_clause = function(ctx) {
-  return this.visitChildren(ctx);
+
+  var result = {};
+  
+  switch (ctx.op.text.toLowerCase()) {
+    case 'union':     result.opType = 0; break;
+    case 'intersect': result.opType = 1; break;
+    case 'except':    result.opType = 2; break;
+  }
+
+  result.all = ctx.K_ALL() !== null;
+  result.rhsQuery = this.visit(ctx.swf_query());
+
+  return result;
+
 };
 
 
@@ -492,13 +530,13 @@ CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#limit_clause.
 CustomVisitor.prototype.visitLimit_clause = function(ctx) {
-  return this.visitChildren(ctx);
+  return this.visit(ctx.expr());
 };
 
 
 // Visit a parse tree produced by SqlppParser#offset_clause.
 CustomVisitor.prototype.visitOffset_clause = function(ctx) {
-  return this.visitChildren(ctx);
+  return this.visit(ctx.expr());
 };
 
 // Visit a parse tree produced by SqlppParser#ExprAggr.

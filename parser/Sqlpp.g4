@@ -44,7 +44,7 @@ having_clause
   ;
 
 setop_clause
-  : (K_UNION|K_INTERSECT|K_EXCEPT) (K_ALL)? swf_query
+  : op=(K_UNION|K_INTERSECT|K_EXCEPT) (K_ALL)? swf_query
   ;
 
 orderby_clause
