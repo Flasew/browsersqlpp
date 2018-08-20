@@ -24,7 +24,8 @@ CustomVisitor.prototype.visitSwf_query = function(ctx) {
     select_clause:  this.visit(ctx.select_clause()),
     from_clause:    this.visit(ctx.from_clause()),
     where_clause:   ctx.where_clause() === null ? null : this.visit(ctx.where_clause()),
-    groupby_clause: ctx.groupby_clause() === null ? null : this.visit(ctx.groupby_clause())
+    groupby_clause: ctx.groupby_clause() === null ? null : this.visit(ctx.groupby_clause()),
+    having_clause:  ctx.having_clause() === null ? null : this.visit(ctx.having_clause())
   };
 
   if (result.groupby_clause !== undefined) {
@@ -439,7 +440,7 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#having_clause.
 CustomVisitor.prototype.visitHaving_clause = function(ctx) {
-  return this.visitChildren(ctx);
+  return this.visit(ctx.expr());
 };
 
 
@@ -451,7 +452,33 @@ CustomVisitor.prototype.visitSetop_clause = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#orderby_clause.
 CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
-  return this.visitChildren(ctx);
+  var result = [];
+  var resultPos = 0;
+
+  for (var i = 0; i < ctx.children.length; i++) {
+
+    if (ctx.children[i].getText().toLowerCase() === ','
+      || ctx.children[i].getText().toLowerCase() === 'order'
+      || ctx.children[i].getText().toLowerCase() === 'by')
+      continue;
+
+    result[resultPos] = {
+      expr: this.visit(ctx.children[i++]),
+    };
+
+    if (ctx.children[i] !== undefined && ctx.children[i].getText() !== ',') {
+      result[resultPos].asc = ctx.children[i].getText().toLowerCase === 'asc';
+    }
+    else {
+      result[resultPos].asc = true;
+    }
+
+    resultPos++;
+  }
+  // console.log('sqlsel');
+  // console.log(ctx.expr());
+  // console.log(ctx.attr_name());
+  return result;
 };
 
 

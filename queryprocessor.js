@@ -267,8 +267,9 @@ console.log(evaluatedParam);
 function swfQuery(db, query) {
   var outputFrom = evalFrom(db, query.from_clause);
   var outputWhere = evalWhere(db, outputFrom, query.where_clause);
-  var outputGroupby = evalGroupBy(db, outputFrom, query.groupby_clause);
-  var outputSelect = evalSelect(db, outputGroupby, query.select_clause);
+  var outputGroupby = evalGroupBy(db, outputWhere, query.groupby_clause);
+  var outputHaving = evalHaving(db, outputGroupby, query.groupby_clause);
+  var outputSelect = evalSelect(db, outputHaving, query.select_clause);
   return outputSelect;
 }
 
@@ -816,6 +817,59 @@ function evalGroupBy(envir, prevBindOutput, groupbyClause) {
 
 }
 
+function evalHaving(envir, prevBindOutput, havingClause) {
+
+  if(havingClause === null){
+    return prevBindOutput;
+  }
+
+  // console.log("OutputFrom: ");
+  // console.log(bindOutputFrom);
+  var currBind = [];
+
+  for (let item of prevBindOutput) {
+    if (evalExprQuery(havingClause, Object.assign({}, item, envir))) {
+      currBind.push(item);
+    }
+  }
+
+  return currBind;
+}
+
+// order: [{
+//   expr: 
+//   asc: 
+// }, ...]
+function evalOrderBy(envir, prevBindOutput, orderbyClause) {
+
+  if(orderbyClause === null){
+    return prevBindOutput;
+  }
+
+  // construct the comparison function. 
+  var comp = function(t1, t2) {
+
+    for (let condition of orderbyClause) {
+
+      // case of equal: go to the next condition
+      let t1res = evalExprQuery(condition, Object.assign({}, t1, envir));
+      let t2res = evalExprQuery(condition, Object.assign({}, t2, envir));
+
+      if (t1res === t2res) {
+        continue;
+      }
+
+      // order
+      return conditoin.asc ? ((t1.res < t2.res) ? -1 : 1) : ((t1.res < t2.res) ? 1 : -1);
+
+    }
+
+    return 0;
+  };
+
+  return prevBindOutput.sort(comp);
+  
+}
 /**
  * Convert a path expression back to the string token, for group by case 3
  * @param  {object} pathExpr parsed path expression
