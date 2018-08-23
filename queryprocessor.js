@@ -194,13 +194,13 @@ const EXPRESSIONS = {
   },
 
   // nested SWF query
-  swf: function(query, db) {
+  sfw: function(query, db) {
     // console.log("SUBQUERY");
     // console.log("query: ");
     // console.log(query);
     // console.log("db: ");
     // console.log(db);
-    var result = swfQuery(db, query);
+    var result = sfwQuery(db, query);
     // console.log("Sub-query result: ");
     // console.log(result);
     return result;
@@ -213,7 +213,7 @@ const EXPRESSIONS = {
  */
 function evalQuery(db, query) {
   if (query.fromClause !== undefined)
-    return swfQuery(db, query);
+    return sfwQuery(db, query);
   return evalExprQuery(query, db);
     
 }
@@ -273,17 +273,17 @@ function evalExprQuery(expr, envir) {
  * @param  {object} query Parsed query clause, in the format specified in readme.
  * @return {object}       result of query, in javascript object (NOT JSON)
  */
-function swfQuery(db, query) {
-  var outputFrom = evalFrom(db, query.from_clause);
-  var outputWhere = evalWhere(db, outputFrom, query.where_clause);
-  var outputGroupBy = evalGroupBy(db, outputWhere, query.groupby_clause);
-  var outputHaving = evalHaving(db, outputGroupBy, query.having_clause);
-  var outputOrderBy = evalOrderBy(db, outputHaving, query.orderby_clause);
-  var outputOffset = evalOffset(db, outputOrderBy, query.offset_clause);
-  var outputLimit = evalLimit(db, outputOffset, query.limit_clause);
-  var outputSelect = evalSelect(db, outputLimit, query.select_clause);
-  return outputSelect;
-}
+// function sfwQuery(db, query) {
+//   var outputFrom = evalFrom(db, query.from_clause);
+//   var outputWhere = evalWhere(db, outputFrom, query.where_clause);
+//   var outputGroupBy = evalGroupBy(db, outputWhere, query.groupby_clause);
+//   var outputHaving = evalHaving(db, outputGroupBy, query.having_clause);
+//   var outputOrderBy = evalOrderBy(db, outputHaving, query.orderby_clause);
+//   var outputOffset = evalOffset(db, outputOrderBy, query.offset_clause);
+//   var outputLimit = evalLimit(db, outputOffset, query.limit_clause);
+//   var outputSelect = evalSelect(db, outputLimit, query.select_clause);
+//   return outputSelect;
+// }
 
 /**
  * Evaluate the FROM clause of a query. The FROM clause will evaluate to a bag

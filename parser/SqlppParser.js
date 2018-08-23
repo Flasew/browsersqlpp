@@ -302,7 +302,7 @@ var symbolicNames = [ null, null, null, null, null, null, null, null, null,
                       "K_MIN", "K_MAX", "K_AVG", "K_COUNT", "STRLITERAL", 
                       "NUMBER", "AST", "VAR_NAME", "WS" ];
 
-var ruleNames =  [ "query", "swf_query", "select_clause", "from_clause", 
+var ruleNames =  [ "query", "sfw_query", "select_clause", "from_clause", 
                    "from_item", "where_clause", "groupby_clause", "having_clause", 
                    "setop_clause", "orderby_clause", "limit_clause", "offset_clause", 
                    "expr", "unary_op", "keyword", "value", "variable", "func_name", 
@@ -395,7 +395,7 @@ SqlppParser.VAR_NAME = 65;
 SqlppParser.WS = 66;
 
 SqlppParser.RULE_query = 0;
-SqlppParser.RULE_swf_query = 1;
+SqlppParser.RULE_sfw_query = 1;
 SqlppParser.RULE_select_clause = 2;
 SqlppParser.RULE_from_clause = 3;
 SqlppParser.RULE_from_item = 4;
@@ -430,8 +430,8 @@ function QueryContext(parser, parent, invokingState) {
 QueryContext.prototype = Object.create(antlr4.ParserRuleContext.prototype);
 QueryContext.prototype.constructor = QueryContext;
 
-QueryContext.prototype.swf_query = function() {
-    return this.getTypedRuleContext(Swf_queryContext,0);
+QueryContext.prototype.sfw_query = function() {
+    return this.getTypedRuleContext(Sfw_queryContext,0);
 };
 
 QueryContext.prototype.expr = function() {
@@ -463,7 +463,7 @@ SqlppParser.prototype.query = function() {
         case 1:
             this.enterOuterAlt(localctx, 1);
             this.state = 38;
-            this.swf_query();
+            this.sfw_query();
             break;
 
         case 2:
@@ -487,7 +487,7 @@ SqlppParser.prototype.query = function() {
     return localctx;
 };
 
-function Swf_queryContext(parser, parent, invokingState) {
+function Sfw_queryContext(parser, parent, invokingState) {
 	if(parent===undefined) {
 	    parent = null;
 	}
@@ -496,52 +496,52 @@ function Swf_queryContext(parser, parent, invokingState) {
 	}
 	antlr4.ParserRuleContext.call(this, parent, invokingState);
     this.parser = parser;
-    this.ruleIndex = SqlppParser.RULE_swf_query;
+    this.ruleIndex = SqlppParser.RULE_sfw_query;
     return this;
 }
 
-Swf_queryContext.prototype = Object.create(antlr4.ParserRuleContext.prototype);
-Swf_queryContext.prototype.constructor = Swf_queryContext;
+Sfw_queryContext.prototype = Object.create(antlr4.ParserRuleContext.prototype);
+Sfw_queryContext.prototype.constructor = Sfw_queryContext;
 
-Swf_queryContext.prototype.select_clause = function() {
+Sfw_queryContext.prototype.select_clause = function() {
     return this.getTypedRuleContext(Select_clauseContext,0);
 };
 
-Swf_queryContext.prototype.from_clause = function() {
+Sfw_queryContext.prototype.from_clause = function() {
     return this.getTypedRuleContext(From_clauseContext,0);
 };
 
-Swf_queryContext.prototype.where_clause = function() {
+Sfw_queryContext.prototype.where_clause = function() {
     return this.getTypedRuleContext(Where_clauseContext,0);
 };
 
-Swf_queryContext.prototype.groupby_clause = function() {
+Sfw_queryContext.prototype.groupby_clause = function() {
     return this.getTypedRuleContext(Groupby_clauseContext,0);
 };
 
-Swf_queryContext.prototype.having_clause = function() {
+Sfw_queryContext.prototype.having_clause = function() {
     return this.getTypedRuleContext(Having_clauseContext,0);
 };
 
-Swf_queryContext.prototype.setop_clause = function() {
+Sfw_queryContext.prototype.setop_clause = function() {
     return this.getTypedRuleContext(Setop_clauseContext,0);
 };
 
-Swf_queryContext.prototype.orderby_clause = function() {
+Sfw_queryContext.prototype.orderby_clause = function() {
     return this.getTypedRuleContext(Orderby_clauseContext,0);
 };
 
-Swf_queryContext.prototype.limit_clause = function() {
+Sfw_queryContext.prototype.limit_clause = function() {
     return this.getTypedRuleContext(Limit_clauseContext,0);
 };
 
-Swf_queryContext.prototype.offset_clause = function() {
+Sfw_queryContext.prototype.offset_clause = function() {
     return this.getTypedRuleContext(Offset_clauseContext,0);
 };
 
-Swf_queryContext.prototype.accept = function(visitor) {
+Sfw_queryContext.prototype.accept = function(visitor) {
     if ( visitor instanceof SqlppVisitor ) {
-        return visitor.visitSwf_query(this);
+        return visitor.visitSfw_query(this);
     } else {
         return visitor.visitChildren(this);
     }
@@ -550,12 +550,12 @@ Swf_queryContext.prototype.accept = function(visitor) {
 
 
 
-SqlppParser.Swf_queryContext = Swf_queryContext;
+SqlppParser.Sfw_queryContext = Sfw_queryContext;
 
-SqlppParser.prototype.swf_query = function() {
+SqlppParser.prototype.sfw_query = function() {
 
-    var localctx = new Swf_queryContext(this, this._ctx, this.state);
-    this.enterRule(localctx, 2, SqlppParser.RULE_swf_query);
+    var localctx = new Sfw_queryContext(this, this._ctx, this.state);
+    this.enterRule(localctx, 2, SqlppParser.RULE_sfw_query);
     var _la = 0; // Token type
     try {
         this.state = 89;
@@ -1907,8 +1907,8 @@ function Setop_clauseContext(parser, parent, invokingState) {
 Setop_clauseContext.prototype = Object.create(antlr4.ParserRuleContext.prototype);
 Setop_clauseContext.prototype.constructor = Setop_clauseContext;
 
-Setop_clauseContext.prototype.swf_query = function() {
-    return this.getTypedRuleContext(Swf_queryContext,0);
+Setop_clauseContext.prototype.sfw_query = function() {
+    return this.getTypedRuleContext(Sfw_queryContext,0);
 };
 
 Setop_clauseContext.prototype.K_UNION = function() {
@@ -1966,7 +1966,7 @@ SqlppParser.prototype.setop_clause = function() {
         }
 
         this.state = 219;
-        this.swf_query();
+        this.sfw_query();
     } catch (re) {
     	if(re instanceof antlr4.error.RecognitionException) {
 	        localctx.exception = re;
@@ -2310,8 +2310,8 @@ ExprNestSWFContext.prototype.constructor = ExprNestSWFContext;
 
 SqlppParser.ExprNestSWFContext = ExprNestSWFContext;
 
-ExprNestSWFContext.prototype.swf_query = function() {
-    return this.getTypedRuleContext(Swf_queryContext,0);
+ExprNestSWFContext.prototype.sfw_query = function() {
+    return this.getTypedRuleContext(Sfw_queryContext,0);
 };
 ExprNestSWFContext.prototype.accept = function(visitor) {
     if ( visitor instanceof SqlppVisitor ) {
@@ -2697,7 +2697,7 @@ SqlppParser.prototype.expr = function(_p) {
             _prevctx = localctx;
 
             this.state = 244;
-            this.swf_query();
+            this.sfw_query();
             break;
 
         case 2:
@@ -2707,7 +2707,7 @@ SqlppParser.prototype.expr = function(_p) {
             this.state = 245;
             this.match(SqlppParser.T__4);
             this.state = 246;
-            this.swf_query();
+            this.sfw_query();
             this.state = 247;
             this.match(SqlppParser.T__5);
             break;

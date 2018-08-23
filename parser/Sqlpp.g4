@@ -2,11 +2,11 @@ grammar Sqlpp;
 
 /* Parser rules */
 query       
-  : swf_query
+  : sfw_query
   | expr
   ;
 
-swf_query
+sfw_query
   : select_clause from_clause (where_clause)? (groupby_clause)? (having_clause)? (setop_clause)? (orderby_clause)? (limit_clause)? (offset_clause)?
   | from_clause (where_clause)? (groupby_clause)? (having_clause)? (setop_clause)? (orderby_clause)? (limit_clause)? (offset_clause)? select_clause
   ;
@@ -44,7 +44,7 @@ having_clause
   ;
 
 setop_clause
-  : op=(K_UNION|K_INTERSECT|K_EXCEPT) (K_ALL)? swf_query
+  : op=(K_UNION|K_INTERSECT|K_EXCEPT) (K_ALL)? sfw_query
   ;
 
 orderby_clause
@@ -60,8 +60,8 @@ offset_clause
   ;
 
 expr
-  : swf_query                                                                       #ExprNestSWF    // Nested query
-  | '(' swf_query ')'                                                               #ExprNestSWF
+  : sfw_query                                                                       #ExprNestSWF    // Nested query
+  | '(' sfw_query ')'                                                               #ExprNestSWF
   | value                                                                           #ExprVal        // literal values
   | variable                                                                        #ExprVari       // variable
   | expr '.' attr_name                                                              #ExprPath       // path

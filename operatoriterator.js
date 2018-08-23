@@ -154,13 +154,13 @@ const EXPRESSIONS = {
   },
 
   // nested SWF query
-  swf: function(query, db) {
+  sfw: function(query, db) {
     // console.log("SUBQUERY");
     // console.log("query: ");
     // console.log(query);
     // console.log("db: ");
     // console.log(db);
-    var result = swfQuery(db, query);
+    var result = sfwQuery(db, query);
     // console.log("Sub-query result: ");
     // console.log(result);
     return result;
@@ -256,17 +256,6 @@ AbstractOpertor.prototype.close = function() {
   this.isOpen = false;
 }
 
-/**
- * "Where" operator, mostly similar to the selection operator in 
- * relational algebra
- */
-function WhereOperator(envir, clause, input) {
-  this.clause = clause;
-  this.envir = envir;
-  this.input = input;
-  AbstractOpertor.call(this);
-  return this;
-}
 
 /* ------------------------- FROM CLAUSE --------------------------*/
 /**
@@ -945,17 +934,28 @@ FullJoinOperator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
-/*-------------------------- WHERE CLAUSE --------------------------*/
+/*-------------------------- EXPRESSIONS --------------------------*/
 
-WhereOperator.prototype = Object.create(AbstractOpertor.prototype);
-WhereOperator.prototype.constructor = AbstractOpertor;
+/**
+ * Iterator for expression queries
+ */
+function ExpressionIterator(envir, clause, input) {
+  this.clause = clause;
+  this.envir = envir;
+  this.input = input;
+  AbstractOpertor.call(this);
+  return this;
+}
 
-WhereOperator.prototype.open = function() {
+ExpressionIterator.prototype = Object.create(AbstractOpertor.prototype);
+ExpressionIterator.prototype.constructor = AbstractOpertor;
+
+ExpressionIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   this.input.open();
 }
 
-WhereOperator.prototype.next = function() {
+ExpressionIterator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
   var result = this.input.next();
@@ -969,7 +969,7 @@ WhereOperator.prototype.next = function() {
     }; 
 }
 
-WhereOperator.prototype.close = function() {
+ExpressionIterator.prototype.close = function() {
   this.input.close();
   this.constructor.prototype.close.call(this);
 }
@@ -978,10 +978,29 @@ WhereOperator.prototype.close = function() {
 
 /*-------------------------- SELECT CLAUSE --------------------------*/
 /**
+ * select iterator factory
+ */
+function makeSelectIterator(envir, clause, input) {
+  switch (clause.selectType) {
+    case 0: 
+    case 2:
+      return new SelectElementOperator(envir, clause, input);
+
+    case 1: 
+      return new SelectAttrOperator(envir, clause, input);
+
+    default: 
+      throw {
+        name: "InvalidSelOpType",
+        message: "Select operator not recognized"
+      };
+  }
+}
+/**
  * "Select" operator, mostly similar to the projection operator in 
  * relational algebra.
  */
-function SelectOperator(envir, input, clause) {
+function SelectElementOperator(envir, input, clause) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
@@ -989,20 +1008,119 @@ function SelectOperator(envir, input, clause) {
   return this;
 }
 
-SelectOperator.prototype = Object.create(AbstractOpertor.prototype);
-SelectOperator.prototype.constructor = AbstractOpertor;
+SelectElementOperator.prototype = Object.create(AbstractOpertor.prototype);
+SelectElementOperator.prototype.constructor = AbstractOpertor;
 
-SelectOperator.prototype.open = function() {
+SelectElementOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
+
+  // check if the type was select. if so, convert to the sel element clause
+  if (this.clause.selectType === 2) {
+
+    var elementReconstruct = {
+      selectType: SEL_TYPES.ELEMENT,
+      selectExpr: {
+        func: 'obj',
+        param: [],
+        isExpr: true
+      }
+    };
+
+    for(let item of this.clause.selectPairs) {
+      if(item.as === undefined){
+        let lastElementIndex = item.from.param.length - 1;
+
+        item.as = item.from.param[lastElementIndex];
+      }
+
+      let newObj = {};
+      newObj.attrName = item.as;
+      newObj.attrVal = item.from;
+
+      elementReconstruct.selectExpr.param.push(newObj);
+    }
+
+    this.clause = elementReconstruct;
+  }
+
   this.input.open();
 }
 
-SelectOperator.prototype.next = function() {
+SelectElementOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
+  var result = this.input.next();
+
+  if (result.done) 
+    return DONE_ELEMENT;
+  else 
+    return {
+      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, result.value, this.envir)),
+      done: false
+    }; 
 }
 
-SelectOperator.prototype.close = function() {
+SelectElementOperator.prototype.close = function() {
+  this.input.close();
+  this.constructor.prototype.close.call(this);
+}
+
+
+function SelectAttrOperator(envir, input, clause) {
+  this.clause = clause;
+  this.envir = envir;
+  this.input = input;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+SelectAttrOperator.prototype = Object.create(AbstractOpertor.prototype);
+SelectAttrOperator.prototype.constructor = AbstractOpertor;
+
+SelectAttrOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.input.open();
+  this.result = {};
+
+  var currItem = this.input.next();
+
+  while (!currItem.done) {
+    let attrName = 
+      evalExprQuery(this.clause.selectAttrName, Object.assign({}, currItem.value, this.envir));
+
+    if(typeof(attrName) !== 'string'){
+      throw {
+        name: 'AttributeNameNotString',
+        message: 'Attribute name evaluated to something that\'s not a string'
+      };
+    }
+
+    let attrVal = evalExprQuery(this.clause.selectAttrVal, Object.assign({}, currItem.value, this.envir));
+
+    this.result[attrName] = attrVal;
+    currItem = this.input.next();
+  }
+
+  this.finished = false;
+  
+}
+
+SelectAttrOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  if (this.finished) 
+    return DONE_ELEMENT;
+  else {
+    this.finished = true;
+    return {
+      value: this.result,
+      done: false
+    }; 
+  }
+}
+
+SelectAttrOperator.prototype.close = function() {
   this.input.close();
   this.constructor.prototype.close.call(this);
 }
@@ -1025,7 +1143,7 @@ SFWRootIterator.prototype.open = function() {
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
     prevIter = 
-      new WhereOperator(this.envir, this.query.where_clause, prevIter);
+      new ExpressionIterator(this.envir, this.query.where_clause, prevIter);
   }
 
   // if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
@@ -1033,10 +1151,16 @@ SFWRootIterator.prototype.open = function() {
   //     new GroupbyOperator(this.envir, this.query.groupby_clause, prevIter);
   // }
   
-  // if (this.query.having_clause !== null && this.query.having_clause !== undefined) {
-  //   prevIter = 
-  //     new HavingOperator(this.envir, this.query.having_clause, prevIter);
-  // }
+  if (this.query.having_clause !== null && this.query.having_clause !== undefined) {
+    if (this.query.groupby_clause === null || this.query.groupby_clause === undefined) {
+      throw {
+        name: 'InvalidHavingClause',
+        message: 'cannot use a having clause without a group by clause'
+      };
+    }
+    prevIter = 
+      new ExpressionIterator(this.envir, this.query.having_clause, prevIter);
+  }
 
   // if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
   //   prevIter = 
@@ -1053,8 +1177,7 @@ SFWRootIterator.prototype.open = function() {
   //     new LimitOperator(this.envir, this.query.limit_clause, prevIter);
   // }
 
-  // this.finalIter = new SelectOperator(this.envir, this.query.select_clause, prevIter);
-  this.finalIter = prevIter;
+  this.finalIter = makeSelectIterator(this.envir, this.query.select_clause, prevIter);
   // have fun :)
   this.finalIter.open();
 }
@@ -1074,21 +1197,34 @@ function sfwQuery(database, query) {
   var result = new SFWRootIterator(database, query);
   result.open();
 
-  //var output = [];
-  var row = result.next();
+  var output;
 
-  while(!row.done){
-    //output.push(row.value);
+  if(query.select_clause.selectType === 1){
+    output = result.next().value;
+  }
+  else{
+    output = [];
+    var row = result.next();
 
-    fromArea.innerHTML = fromArea.innerHTML + "<tr><td>" + JSON.stringify(row.value) + "</td></tr>";
+    while(!row.done){
+      output.push(row.value);
+
+      fromArea.innerHTML = fromArea.innerHTML + "<tr><td>" + JSON.stringify(row.value) + "</td></tr>";
   
-    row = result.next();
+      row = result.next();
+    }
   }
 
   result.close();
 
-  //return output;
+  return output;
 }
+
+
+
+
+
+
 
 
 var query = document.getElementById("QUERY");

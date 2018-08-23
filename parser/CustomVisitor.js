@@ -14,12 +14,12 @@ CustomVisitor.prototype.constructor = SqlppVisitor;
 // Visit a parse tree produced by SqlppParser#query.
 CustomVisitor.prototype.visitQuery = function(ctx) {
   if (ctx.expr() !== null) return this.visit(ctx.expr());
-  else                     return this.visit(ctx.swf_query());
+  else                     return this.visit(ctx.sfw_query());
 };
 
 
-// Visit a parse tree produced by SqlppParser#swf_query.
-CustomVisitor.prototype.visitSwf_query = function(ctx) {
+// Visit a parse tree produced by SqlppParser#sfw_query.
+CustomVisitor.prototype.visitSfw_query = function(ctx) {
   var result = {
     select_clause:  this.visit(ctx.select_clause()),
     from_clause:    this.visit(ctx.from_clause()),
@@ -287,11 +287,11 @@ CustomVisitor.prototype.visitExprBinary = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprNestSWF.
-CustomVisitor.prototype.visitExprNestSWF = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprNestSFW.
+CustomVisitor.prototype.visitExprNestSFW = function(ctx) {
   return {
-    func: 'swf',
-    param: [this.visit(ctx.swf_query())],
+    func: 'sfw',
+    param: [this.visit(ctx.sfw_query())],
     isExpr: true
   };
 };
@@ -482,7 +482,7 @@ CustomVisitor.prototype.visitSetop_clause = function(ctx) {
   }
 
   result.all = ctx.K_ALL() !== null;
-  result.rhsQuery = this.visit(ctx.swf_query());
+  result.rhsQuery = this.visit(ctx.sfw_query());
 
   return result;
 
@@ -568,7 +568,7 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   else {
     var exprResult = this.visit(ctx.expr());
 
-    if (exprResult.func !== 'swf') {
+    if (exprResult.func !== 'sfw') {
 
 
       result.param = [JSON.stringify(exprResult)];

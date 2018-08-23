@@ -138,7 +138,7 @@ WS
 
 rule names:
 query
-swf_query
+sfw_query
 select_clause
 from_clause
 from_item

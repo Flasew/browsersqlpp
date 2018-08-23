@@ -18,8 +18,8 @@ SqlppVisitor.prototype.visitQuery = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#swf_query.
-SqlppVisitor.prototype.visitSwf_query = function(ctx) {
+// Visit a parse tree produced by SqlppParser#sfw_query.
+SqlppVisitor.prototype.visitSfw_query = function(ctx) {
   return this.visitChildren(ctx);
 };
 
