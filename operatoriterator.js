@@ -399,7 +399,7 @@ RangePairOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   // this.input.open();
 
-  this.bindFrom = evalExprQuery(this.clause.bindFrom, envir);
+  this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
 
   //check type: should be object, not array
   if (typeof(this.bindFrom) !== 'object' || Array.isArray(this.bindFrom)) {
@@ -491,7 +491,7 @@ CartesianOperator.prototype.next = function() {
     }
 
     this.rhsIter = makeFromIterator(
-      Object.assign({}, this.lhsTuple.value, envir), this.clause.rhs);
+      Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
     this.rhsIter.open();
 
     this.rhsTuple = this.rhsIter.next();
@@ -555,7 +555,7 @@ InnerJoinOperator.prototype.next = function() {
       }
 
       this.rhsIter = makeFromIterator(
-        Object.assign({}, this.lhsTuple.value, envir), this.clause.rhs);
+        Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
       this.rhsIter.open();
 
       this.rhsTuple = this.rhsIter.next();
@@ -636,7 +636,7 @@ LeftJoinOperator.prototype.next = function() {
       }
 
       this.rhsIter = makeFromIterator(
-        Object.assign({}, this.lhsTuple.value, envir), this.clause.rhs);
+        Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
       this.rhsIter.open();
 
       this.rhsTuple = this.rhsIter.next();
@@ -713,7 +713,7 @@ LeftCorrOperator.prototype.next = function() {
     }
 
     this.rhsIter = makeFromIterator(
-      Object.assign({}, this.lhsTuple.value, envir), this.clause.rhs);
+      Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
     this.rhsIter.open();
 
     this.rhsTuple = this.rhsIter.next();
@@ -803,7 +803,7 @@ RightJoinOperator.prototype.next = function() {
       }
 
       this.lhsIter = makeFromIterator(
-        Object.assign({}, this.rhsTuple.value, envir), this.clause.lhs);
+        Object.assign({}, this.rhsTuple.value, this.envir), this.clause.lhs);
       this.lhsIter.open();
 
       this.lhsTuple = this.lhsIter.next();
@@ -853,36 +853,35 @@ FullJoinOperator.prototype.constructor = AbstractOpertor;
 FullJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  this.lhsIter = makeFromIterator(this.envir, this.clause.lhs);
-  this.lhsIter.open();
+  var lhsIter = makeFromIterator(var envir, this.clause.lhs);
+  lhsIter.open();
 
-  this.lhsBuff = [];
+  var lhsBuff = [];
 
   var currTuple = this.lhsIter.next();
 
   while(!currTuple.done){
     lhsBuff.push(currTuple);
 
-    currTuple = this.lhsIter.next();
+    currTuple = lhsIter.next();
   }
 
-  this.lhsIter.close();
+  lhsIter.close();
 
+  var rhsIter = makeFromIterator(this.envir, this.clause.rhs);
+  rhsIter.open();
 
-  this.rhsIter = makeFromIterator(this.envir, this.clause.rhs);
-  this.rhsIter.open();
+  var rhsBuff = [];
 
-  this.rhsBuff = [];
-
-  currTuple = this.rhsIter.next();
+  currTuple = rhsIter.next();
 
   while(!currTuple.done){
     rhsBuff.push(currTuple);
 
-    currTuple = this.rhsIter.next();
+    currTuple = rhsIter.next();
   }
 
-  this.rhsIter.close();
+  rhsIter.close();
 
 
   let leftincluded = Array(lhsBuff.length).fill(false);
@@ -1022,40 +1021,40 @@ SFWRootIterator.prototype.constructor = AbstractOpertor;
 SFWRootIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   console.log(this.envir);
-  this.prevIter = makeFromIterator(this.envir, this.query.from_clause);;
+   var prevIter = makeFromIterator(this.envir, this.query.from_clause);;
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
-    this.prevIter = 
-      new WhereOperator(this.envir, this.query.where_clause, this.prevIter);
+    prevIter = 
+      new WhereOperator(this.envir, this.query.where_clause, prevIter);
   }
 
   // if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
-  //   this.prevIter = 
-  //     new GroupbyOperator(this.envir, this.query.groupby_clause, this.prevIter);
+  //   prevIter = 
+  //     new GroupbyOperator(this.envir, this.query.groupby_clause, prevIter);
   // }
   
   // if (this.query.having_clause !== null && this.query.having_clause !== undefined) {
-  //   this.prevIter = 
-  //     new HavingOperator(this.envir, this.query.having_clause, this.prevIter);
+  //   prevIter = 
+  //     new HavingOperator(this.envir, this.query.having_clause, prevIter);
   // }
 
   // if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
-  //   this.prevIter = 
-  //     new OrderByOperator(this.envir, this.query.orderby_clause, this.prevIter);
+  //   prevIter = 
+  //     new OrderByOperator(this.envir, this.query.orderby_clause, prevIter);
   // }
 
   // if (this.query.offset_clause !== null && this.query.offset_clause !== undefined) {
-  //   this.prevIter = 
-  //     new OffsetOperator(this.envir, this.query.offset_clause, this.prevIter);
+  //   prevIter = 
+  //     new OffsetOperator(this.envir, this.query.offset_clause, prevIter);
   // }
 
   // if (this.query.limit_clause !== null && this.query.limit_clause !== undefined) {
-  //   this.prevIter = 
-  //     new LimitOperator(this.envir, this.query.limit_clause, this.prevIter);
+  //   prevIter = 
+  //     new LimitOperator(this.envir, this.query.limit_clause, prevIter);
   // }
 
-  // this.finalIter = new SelectOperator(this.envir, this.query.select_clause, this.prevIter);
-  this.finalIter = this.prevIter;
+  // this.finalIter = new SelectOperator(this.envir, this.query.select_clause, prevIter);
+  this.finalIter = prevIter;
   // have fun :)
   this.finalIter.open();
 }
