@@ -847,10 +847,10 @@ FullJoinOperator.prototype.open = function() {
 
   var lhsBuff = [];
 
-  var currTuple = this.lhsIter.next();
+  var currTuple = lhsIter.next();
 
   while(!currTuple.done){
-    lhsBuff.push(currTuple);
+    lhsBuff.push(currTuple.value);
 
     currTuple = lhsIter.next();
   }
@@ -865,7 +865,7 @@ FullJoinOperator.prototype.open = function() {
   currTuple = rhsIter.next();
 
   while(!currTuple.done){
-    rhsBuff.push(currTuple);
+    rhsBuff.push(currTuple.value);
 
     currTuple = rhsIter.next();
   }
@@ -880,25 +880,26 @@ FullJoinOperator.prototype.open = function() {
     for (let j = 0; j < rhsBuff.length; j++) {
       
       let newTuple = Object.assign({}, lhsBuff[i], rhsBuff[j]);
-
-      if (evalExprQuery(fromItem.on, newTuple)) {
+console.log(this.clause.on);
+      if (evalExprQuery(this.clause.on, newTuple)) {
         this.result.push(newTuple);
         leftincluded[i] = true;
         rightincluded[j] = true;
       }
     }
   }
-
+console.log(1)
   for (let i = 0; i < leftincluded.length; i++) {
 
     if (!leftincluded[i]) {
       let newTuple = Object.assign({}, lhsBuff[i]);
-      newTuple[fromItem.rhs.bindTo] = null;
+      for (let attr in rhsBuff[0]) 
+        newTuple[attr] = null;
       this.result.push(newTuple);
     }
 
   }
-
+console.log(2)
   for (let i = 0; i < rightincluded.length; i++) {
 
     if (!rightincluded[i]) {
@@ -910,6 +911,7 @@ FullJoinOperator.prototype.open = function() {
       this.result.push(newTuple);
     }
   }
+  console.log(3)
 }
 
 FullJoinOperator.prototype.next = function() {
@@ -926,6 +928,8 @@ FullJoinOperator.prototype.next = function() {
   else{
     currValue = DONE_ELEMENT;
   }
+
+  this.pos++;
 
   return currValue;
 }
@@ -1000,7 +1004,7 @@ function makeSelectIterator(envir, clause, input) {
  * "Select" operator, mostly similar to the projection operator in 
  * relational algebra.
  */
-function SelectElementOperator(envir, input, clause) {
+function SelectElementOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
@@ -1018,7 +1022,7 @@ SelectElementOperator.prototype.open = function() {
   if (this.clause.selectType === 2) {
 
     var elementReconstruct = {
-      selectType: SEL_TYPES.ELEMENT,
+      selectType: 0,
       selectExpr: {
         func: 'obj',
         param: [],
@@ -1066,7 +1070,7 @@ SelectElementOperator.prototype.close = function() {
 }
 
 
-function SelectAttrOperator(envir, input, clause) {
+function SelectAttrOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
@@ -1208,8 +1212,6 @@ function sfwQuery(database, query) {
 
     while(!row.done){
       output.push(row.value);
-
-      fromArea.innerHTML = fromArea.innerHTML + "<tr><td>" + JSON.stringify(row.value) + "</td></tr>";
   
       row = result.next();
     }
@@ -1231,17 +1233,10 @@ var query = document.getElementById("QUERY");
 var envir = document.getElementById("DB");
 var button = document.getElementById("BUTTON");
 
-var fromArea = document.getElementById("FROM");
-var whereArea = document.getElementById("WHERE");
-var groupbyArea = document.getElementById("GROUPBY");
-var havingArea = document.getElementById("HAVING");
-var orderbyArea = document.getElementById("ORDERBY");
-var offsetArea = document.getElementById("OFFSET");
-var limitArea = document.getElementById("LIMIT");
 var selectArea = document.getElementById("SELECT");
 
 button.addEventListener("click", function(){
-  fromArea.innerHTML = "";
+  selectArea.innerHTML = "";
 
   var input = query.value;
 
@@ -1258,7 +1253,16 @@ button.addEventListener("click", function(){
 
   var db = JSON.parse(envir.value);
 
-  sfwQuery(db, ast);
+  var queryResult = sfwQuery(db, ast);
+
+  if(Array.isArray(queryResult)){
+    for(let i = 0; i < queryResult.length; i++){
+      selectArea.innerHTML = selectArea.innerHTML + "<tr><td>" + JSON.stringify(queryResult[i]) + "</td></tr>";
+    }
+  }
+  else{
+      selectArea.innerHTML = selectArea.innerHTML + "<tr><td>" + JSON.stringify(queryResult) + "</td></tr>";
+  }
 
   //fromArea.innerHTML = JSON.stringify(output);
 
