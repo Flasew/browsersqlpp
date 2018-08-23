@@ -48,33 +48,7 @@ function WhereOperator(envir, clause, input) {
   return this;
 }
 
-WhereOperator.prototype = Object.create(AbstractOpertor.prototype);
-WhereOperator.prototype.constructor = AbstractOpertor;
-
-WhereOperator.prototype.open = function() {
-  this.constructor.prototype.open.call(this);
-  this.input.open();
-}
-
-WhereOperator.prototype.next = function() {
-  this.constructor.prototype.next.call(this);
-
-  var result = this.input.next();
-
-  if (result.done) 
-    return DONE_ELEMENT;
-  else 
-    return {
-      value: evalExprQuery(this.clause, Object.assign({}, result.value, this.envir)),
-      done: false
-    }; 
-}
-
-WhereOperator.prototype.close = function() {
-  this.input.close();
-  this.constructor.prototype.close.call(this);
-}
-
+/* ------------------------- FROM CLAUSE --------------------------*/
 /**
  * from item iterator factory
  */
@@ -748,6 +722,38 @@ FullJoinOperator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
+/*-------------------------- WHERE CLAUSE --------------------------*/
+
+WhereOperator.prototype = Object.create(AbstractOpertor.prototype);
+WhereOperator.prototype.constructor = AbstractOpertor;
+
+WhereOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+  this.input.open();
+}
+
+WhereOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  var result = this.input.next();
+
+  if (result.done) 
+    return DONE_ELEMENT;
+  else 
+    return {
+      value: evalExprQuery(this.clause, Object.assign({}, result.value, this.envir)),
+      done: false
+    }; 
+}
+
+WhereOperator.prototype.close = function() {
+  this.input.close();
+  this.constructor.prototype.close.call(this);
+}
+
+
+
+/*-------------------------- SELECT CLAUSE --------------------------*/
 /**
  * "Select" operator, mostly similar to the projection operator in 
  * relational algebra.
@@ -778,3 +784,64 @@ SelectOperator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
+/*----------------------- SFW ROOT ITERATOR ------------------------*/
+function SFWRootIterator(envir, query) {
+  this.query = query;
+  this.envir = envir;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+SFWRootIterator.prototype = Object.create(AbstractOpertor.prototype);
+SFWRootIterator.prototype.constructor = AbstractOpertor;
+
+SFWRootIterator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.prevIter = makeFromIterator(envir, query.from_clause);;
+
+  if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
+    this.prevIter = 
+      new WhereOperator(this.envir, this.query.where_clause, this.prevIter);
+  }
+
+  // if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
+  //   this.prevIter = 
+  //     new GroupbyOperator(this.envir, this.query.groupby_clause, this.prevIter);
+  // }
+  
+  // if (this.query.having_clause !== null && this.query.having_clause !== undefined) {
+  //   this.prevIter = 
+  //     new HavingOperator(this.envir, this.query.having_clause, this.prevIter);
+  // }
+
+  // if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
+  //   this.prevIter = 
+  //     new OrderByOperator(this.envir, this.query.orderby_clause, this.prevIter);
+  // }
+
+  // if (this.query.offset_clause !== null && this.query.offset_clause !== undefined) {
+  //   this.prevIter = 
+  //     new OffsetOperator(this.envir, this.query.offset_clause, this.prevIter);
+  // }
+
+  // if (this.query.limit_clause !== null && this.query.limit_clause !== undefined) {
+  //   this.prevIter = 
+  //     new LimitOperator(this.envir, this.query.limit_clause, this.prevIter);
+  // }
+
+  // this.finalIter = new SelectOperator(this.envir, this.query.select_clause, this.prevIter);
+  this.finalIter = this.prevIter;
+  // have fun :)
+  this.finalIter.open();
+}
+
+SFWRootIterator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+  return this.finalIter.next();;
+}
+
+SFWRootIterator.prototype.close = function() {
+  this.finalIter.close();
+  this.constructor.prototype.close.call(this);
+}
