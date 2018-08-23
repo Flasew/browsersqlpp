@@ -1,4 +1,224 @@
 /**
+ * All possible different expressions used in expression query. 
+ * The object 'expression' is essentially a library of different expressions,
+ * implemented as functions. Called by evalExprQuery in the form of 
+ * expression['function_name']
+ */
+const EXPRESSIONS = {
+
+  /* logical operator */
+  eq:  (lhs, rhs) => lhs === rhs,                   // ===
+  neq: (lhs, rhs) => lhs !== rhs,                   // !==
+  lt:  (lhs, rhs) => lhs < rhs,                     // <
+  gt:  (lhs, rhs) => lhs > rhs,                     // >
+  lte: (lhs, rhs) => lhs === rhs || lhs < rhs,      // <=
+  gte: (lhs, rhs) => lhs === rhs || lhs > rhs,      // >=
+  and: (lhs, rhs) => lhs && rhs,                    // &&
+  or:  (lhs, rhs) => lhs || rhs,                    // ||
+  not: (arg) => !arg,                               // !
+
+  /* arithmetical operator */
+  add: (lhs, rhs) => lhs + rhs,
+  sub: (lhs, rhs) => lhs - rhs,
+  mul: (lhs, rhs) => lhs * rhs,
+  div: (lhs, rhs) => lhs / rhs,
+  mod: (lhs, rhs) => lhs % rhs,
+  neg: arg => -arg,
+
+  /* aggregate operator */
+  avg: function(input, envir) {
+    // case of dealing with an aggregate function.
+    if (Array.isArray(input))
+      return (input.reduce((a,b) => a + b, 0)) / (input.length);
+
+    // other wise, the input is of SQL format, deal with the input expression
+    // this requires the "group" attribute of the envir argument.
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    var sum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
+    var cnt = envir.group.length;
+
+    return sum / cnt;
+  },
+
+  count: function(input, envir) {
+
+    // case of dealing with an aggregate function.
+    if (Array.isArray(input))
+      return input.length;
+
+    // other wise, the input is of SQL format, deal with the input expression
+    // this requires the "group" attribute of the envir argument.
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    return envir.group.length;
+  },
+
+  min: function(input, envir) {
+    if(Array.isArray(input)){
+       return (input.reduce((acc, curr) => curr < acc ? curr : acc));
+    }
+
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    input = JSON.parse(input);
+
+    var mimimum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => curr < acc ? curr : acc);
+
+    return mimimum;
+  },
+
+  max: function(input, envir) {
+    if(Array.isArray(input)) {
+      return (input.reduce((acc, curr) => curr > acc ? curr : acc));
+    }
+
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    input = JSON.parse(input);
+
+    var maximum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => curr > acc ? curr : acc);
+
+    return maximum;
+  },
+
+  sum: function(input, envir) {
+
+    // case of dealing with an aggregate function.
+    if (Array.isArray(input))
+      return input.reduce((acc, curr) => acc + curr, 0);
+
+    // other wise, the input is of SQL format, deal with the input expression
+    // this requires the "group" attribute of the envir argument.
+    if (envir.group === undefined) 
+      throw {
+        name: "BadAggregate",
+        massage: "illegal aggregate argument"
+      };
+
+    input = JSON.parse(input);
+
+    return envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
+  },
+  //collection => collection.reduce((a,b) => a + b, 0),
+
+  /* other */
+
+  // retrieve the value of a variable under an environment
+  variable: (name, envir) => envir[name],
+
+  // retrieve the value of a variable located by a path 
+  path: function(expr, attr, envir) {
+    var exprResult = evalExprQuery(expr, envir);
+    return exprResult[attr];
+  },
+
+  id: i => i, // identity
+
+  // evaluate to the form of {attr: expr}
+  obj: function() {
+    var result = {};
+
+    for(let i = 0; i < arguments.length - 1; i++){
+      result[arguments[i]["attrName"]] = evalExprQuery(arguments[i]["attrVal"], arguments[arguments.length - 1]);
+    }
+
+    return result;
+  },
+
+  // evaluated to an array of variable in the order of argument
+  arr: function() {
+    var result = [];
+
+    for(let i = 0; i < arguments.length - 1; i++){
+      result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
+    }
+
+    return result;
+  },
+
+  // nested SWF query
+  swf: function(query, db) {
+    // console.log("SUBQUERY");
+    // console.log("query: ");
+    // console.log(query);
+    // console.log("db: ");
+    // console.log(db);
+    var result = swfQuery(db, query);
+    // console.log("Sub-query result: ");
+    // console.log(result);
+    return result;
+  }
+
+};
+
+/**
+ * Evaluate an expression query. An expression query is specified as an object
+ * in the following format: {func: <string>, param: <array>, isExpr: true}
+ * otherwise the expression is treated as an identity and itself will be returned. 
+ * For the isExpr objects, it will have a specified function (func) with 
+ * parameters given in param as an array; if param also contains an isExpr 
+ * object, it will be evaluated recursively. When calling the "func" functions,
+ * the environment will always be given as the LAST parameter to func.
+ * @param  {object} expr  Expression object, if with an isExpr will be evaluated, otherwise identity returned
+ * @param  {object} envir environment for the evaluation, usually binding environment concated with binding tuple
+ * @return {object}       result of the evaluation
+ */
+function evalExprQuery(expr, envir) {
+
+  // identity
+  if (expr.isExpr === undefined) 
+    return expr;
+
+  expr = Object.assign({}, expr);
+
+  // console.log("Function name: " + expr.func);
+  // console.log("Parameters: ");
+  // console.log(expr.param);
+  // console.log("envir: ")
+  // console.log(envir)
+
+  let evaluatedParam = [];
+  // evaluate parameters first if they're EXPRESSIONS
+  for (let i = 0; i < expr.param.length; i++) 
+
+    if (expr.param[i].isExpr) {
+      // console.log("expr.param before: ")
+      // console.log(expr.param[i])
+      evaluatedParam[i] = evalExprQuery(expr.param[i], envir);
+      // console.log("expr.param after: ")
+      // console.log(expr.param[i])
+    }
+    else {
+      evaluatedParam[i] = expr.param[i];
+    }
+
+  //console.log(evaluatedParam);
+
+  let result = EXPRESSIONS[expr.func](...evaluatedParam, envir);
+  // console.log("Eval result: ");
+  // console.log(result);
+  return result;
+}
+
+
+/**
  * Base abstract operator "class".
  */
 
@@ -108,7 +328,11 @@ RangeOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   // this.input.open();
 
-  this.bindFrom = evalExprQuery(this.clause.bindFrom, envir);
+  console.log(this.clause);
+  console.log(this.envir);
+  this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
+  console.log("bindFrom is:");
+  console.log(this.bindFrom);
 
   if (!Array.isArray(this.bindFrom)) {
     this.bindFrom = [this.bindFrom];
@@ -136,7 +360,7 @@ RangeOperator.prototype.next = function() {
   // }
 
   var currValue = {}; //Object.assign({}, this.currBindTuple.value);
-  currValue[this.bindTo] = this.bindFrom[pos];
+  currValue[this.bindTo] = this.bindFrom[this.pos];
 
   this.pos++;
 
@@ -797,8 +1021,8 @@ SFWRootIterator.prototype.constructor = AbstractOpertor;
 
 SFWRootIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
-
-  this.prevIter = makeFromIterator(envir, query.from_clause);;
+  console.log(this.envir);
+  this.prevIter = makeFromIterator(this.envir, this.query.from_clause);;
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
     this.prevIter = 
@@ -845,3 +1069,58 @@ SFWRootIterator.prototype.close = function() {
   this.finalIter.close();
   this.constructor.prototype.close.call(this);
 }
+
+
+function sfwQuery(database, query) {
+  var result = new SFWRootIterator(database, query);
+  result.open();
+
+  var output = [];
+  var row = result.next();
+
+  while(!row.done){
+    output.push(row.value);
+
+    row = result.next();
+  }
+
+  result.close();
+
+  return output;
+}
+
+
+var query = document.getElementById("QUERY");
+var envir = document.getElementById("DB");
+var button = document.getElementById("BUTTON");
+
+var fromArea = document.getElementById("FROM");
+var whereArea = document.getElementById("WHERE");
+var groupbyArea = document.getElementById("GROUPBY");
+var havingArea = document.getElementById("HAVING");
+var orderbyArea = document.getElementById("ORDERBY");
+var offsetArea = document.getElementById("OFFSET");
+var limitArea = document.getElementById("LIMIT");
+var selectArea = document.getElementById("SELECT");
+  console.log("1231231");
+button.addEventListener("click", function(){
+  var input = query.value;
+  console.log("1231231");
+  var chars = new antlr4.InputStream(input);
+  var lexer = new SqlppLexer(chars);
+  var tokens  = new antlr4.CommonTokenStream(lexer);
+  var parser = new SqlppParser(tokens);
+  parser.buildParseTrees = true;
+  var tree = parser.query();
+
+  var visitor = new SqlppVisitor();
+  var ast = visitor.visit(tree);
+  console.log(ast);
+
+  var db = JSON.parse(envir.value);
+
+  var output = sfwQuery(db, ast);
+
+  fromArea.innerHTML = JSON.stringify(output);
+
+});
