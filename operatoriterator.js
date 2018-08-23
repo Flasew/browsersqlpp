@@ -95,9 +95,11 @@ function makeFromIterator(envir, clause) {
       return new InnerJoinOperator(envir, clause);
 
     case 3:
+      return new LeftJoinOperator(envir, clause);
+
     case 7: 
     case 10: 
-      return new LeftJoinOperator(envir, clause);
+      return new LeftCorrOperator(envir, clause);
 
     case 4:
       return new RightJoinOperator(envir, clause);
@@ -401,22 +403,34 @@ LeftJoinOperator.prototype.open = function() {
   this.lhsTuple = undefined;
   this.rhsTuple = DONE_ELEMENT;
 
-  this.matched = false;
+  this.matched = true;
 }
 
 LeftJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
   var currValue;
+  var unmatchedReturn = false;
 
   do {
-
+    // check if RHS is empty. if so, advance LHS to match the 
+    // next tuple. If LHS is also empty, we're done.
     while (this.rhsTuple.done === true) {
 
       if (this.rhsIter !== undefined) 
         this.rhsIter.close();
 
+      // if no match for the LHS variable was found, 
+      // add a null as the RHS bindto result.
+      if (this.matched === false) {
+        currValue = Object.assign({}, this.lhsTuple.value);
+        currValue[this.clause.rhs.bindTo] = null;
+        unmatchedReturn = true;
+      }
+  
+      // advance lhsTuple and rhsTuple to the first of each iterator
       this.lhsTuple = this.lhsIter.next();
+      this.matched = false;
 
       if (this.lhsTuple.done === true) {
         this.lhsIter.close();
@@ -430,11 +444,19 @@ LeftJoinOperator.prototype.next = function() {
       this.rhsTuple = this.rhsIter.next();
     }
 
+    if (unmatchedReturn) 
+      return  {
+        value: currValue,
+        done: false
+      };
+
     currValue = Object.assign({}, this.lhsTuple.value, this.rhsTuple.value);
 
     this.rhsTuple = this.rhsIter.next();
 
   } while (!evalExprQuery(this.clause.on, currValue));
+
+  this.matched = true;
 
   return {
     value: currValue,
@@ -447,7 +469,172 @@ LeftJoinOperator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
+/**
+ * "Left Correlate" operator of the from clause
+ */
+function LeftCorrOperator(envir, clause) {
+  this.clause = clause;
+  this.envir = envir;
+  AbstractOpertor.call(this);
+  return this;
+}
 
+LeftCorrOperator.prototype = Object.create(AbstractOpertor.prototype);
+LeftCorrOperator.prototype.constructor = AbstractOpertor;
+
+LeftCorrOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.lhsIter = makeFromIterator(this.envir, this.clause.lhs);
+  this.rhsIter = undefined;
+
+  this.lhsIter.open();
+  this.lhsTuple = undefined;
+  this.rhsTuple = DONE_ELEMENT;
+
+  this.matched = true;
+}
+
+LeftCorrOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  var currValue;
+
+  if (this.rhsTuple.done === true) {
+
+    if (this.rhsIter !== undefined) 
+      this.rhsIter.close();
+
+    // advance lhsTuple and rhsTuple to the first of each iterator
+    this.lhsTuple = this.lhsIter.next();
+    this.matched = false;
+
+    if (this.lhsTuple.done === true) {
+      this.lhsIter.close();
+      return DONE_ELEMENT;
+    }
+
+    this.rhsIter = makeFromIterator(
+      Object.assign({}, this.lhsTuple.value, envir), this.clause.rhs);
+    this.rhsIter.open();
+
+    this.rhsTuple = this.rhsIter.next();
+
+    // if rhsIterator gives empty, returns the empty case of RHS = null
+    if (this.rhsTuple.done === true) {
+      currValue = Object.assign({}, this.lhsTuple.value);
+      currValue[this.clause.rhs.bindTo] = null;
+      return {
+        value: currValue,
+        done: false
+      };
+    }
+
+  }
+
+  currValue = Object.assign({}, this.lhsTuple.value, this.rhsTuple.value);
+
+  this.rhsTuple = this.rhsIter.next();
+
+  return {
+    value: currValue,
+    done: false
+  };
+
+}
+
+LeftCorrOperator.prototype.close = function() {
+  this.constructor.prototype.close.call(this);
+}
+
+/**
+ * "Right join" operator of the from clause
+ */
+function RightJoinOperator(envir, clause) {
+  this.clause = clause;
+  this.envir = envir;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+RightJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
+RightJoinOperator.prototype.constructor = AbstractOpertor;
+
+RightJoinOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.rhsIter = makeFromIterator(this.envir, this.clause.rhs);
+  this.lhsIter = undefined;
+
+  this.rhsIter.open();
+  this.rhsTuple = undefined;
+  this.lhsTuple = DONE_ELEMENT;
+
+  this.matched = true;
+}
+
+RightJoinOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  var currValue;
+  var unmatchedReturn = false;
+
+  do {
+    // check if RHS is empty. if so, advance LHS to match the 
+    // next tuple. If LHS is also empty, we're done.
+    while (this.lhsTuple.done === true) {
+
+      if (this.lhsIter !== undefined) 
+        this.lhsIter.close();
+
+      // if no match for the LHS variable was found, 
+      // add a null as the RHS bindto result.
+      if (this.matched === false) {
+        currValue = Object.assign({}, this.rhsTuple.value);
+        currValue[this.clause.lhs.bindTo] = null;
+        unmatchedReturn = true;
+      }
+  
+      // advance rhsTuple and lhsTuple to the first of each iterator
+      this.rhsTuple = this.rhsIter.next();
+      this.matched = false;
+
+      if (this.rhsTuple.done === true) {
+        this.rhsIter.close();
+        return DONE_ELEMENT;
+      }
+
+      this.lhsIter = makeFromIterator(
+        Object.assign({}, this.rhsTuple.value, envir), this.clause.lhs);
+      this.lhsIter.open();
+
+      this.lhsTuple = this.lhsIter.next();
+    }
+
+    if (unmatchedReturn) 
+      return  {
+        value: currValue,
+        done: false
+      };
+
+    currValue = Object.assign({}, this.rhsTuple.value, this.lhsTuple.value);
+
+    this.lhsTuple = this.lhsIter.next();
+
+  } while (!evalExprQuery(this.clause.on, currValue));
+
+  this.matched = true;
+
+  return {
+    value: currValue,
+    done: false
+  };
+
+}
+
+RightJoinOperator.prototype.close = function() {
+  this.constructor.prototype.close.call(this);
+}
 
 /**
  * "Select" operator, mostly similar to the projection operator in 
