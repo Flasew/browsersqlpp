@@ -637,6 +637,118 @@ RightJoinOperator.prototype.close = function() {
 }
 
 /**
+ * "Full join" operator of the from clause
+ * Blocking Operator
+ */
+function FullJoinOperator(envir, clause) {
+  this.clause = clause;
+  this.envir = envir;
+  this.result = [];
+  this.pos = 0;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+FullJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
+FullJoinOperator.prototype.constructor = AbstractOpertor;
+
+FullJoinOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.lhsIter = makeFromIterator(this.envir, this.clause.lhs);
+  this.lhsIter.open();
+
+  this.lhsBuff = [];
+
+  var currTuple = this.lhsIter.next();
+
+  while(!currTuple.done){
+    lhsBuff.push(currTuple);
+
+    currTuple = this.lhsIter.next();
+  }
+
+  this.lhsIter.close();
+
+
+  this.rhsIter = makeFromIterator(this.envir, this.clause.rhs);
+  this.rhsIter.open();
+
+  this.rhsBuff = [];
+
+  currTuple = this.rhsIter.next();
+
+  while(!currTuple.done){
+    rhsBuff.push(currTuple);
+
+    currTuple = this.rhsIter.next();
+  }
+
+  this.rhsIter.close();
+
+
+  let leftincluded = Array(lhsBuff.length).fill(false);
+  let rightincluded = Array(rhsBuff.length).fill(false);
+
+  for (let i = 0; i < lhsBuff.length; i++) {
+    for (let j = 0; j < rhsBuff.length; j++) {
+      
+      let newTuple = Object.assign({}, lhsBuff[i], rhsBuff[j]);
+
+      if (evalExprQuery(fromItem.on, newTuple)) {
+        this.result.push(newTuple);
+        leftincluded[i] = true;
+        rightincluded[j] = true;
+      }
+    }
+  }
+
+  for (let i = 0; i < leftincluded.length; i++) {
+
+    if (!leftincluded[i]) {
+      let newTuple = Object.assign({}, lhsBuff[i]);
+      newTuple[fromItem.rhs.bindTo] = null;
+      this.result.push(newTuple);
+    }
+
+  }
+
+  for (let i = 0; i < rightincluded.length; i++) {
+
+    if (!rightincluded[i]) {
+      let newTuple = Object.assign({}, rhsBuff[i]);
+
+      for (let attr in lhsBuff[0]) 
+        newTuple[attr] = null;
+      
+      this.result.push(newTuple);
+    }
+  }
+}
+
+FullJoinOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  var currValue;
+
+  if(this.pos < this.result.length){
+    currValue = {
+      value: this.result[this.pos],
+      done: false
+    };
+  }
+  else{
+    currValue = DONE_ELEMENT;
+  }
+
+  return currValue;
+}
+
+FullJoinOperator.prototype.close = function() {
+  this.constructor.prototype.close.call(this);
+}
+
+/**
  * "Select" operator, mostly similar to the projection operator in 
  * relational algebra.
  */
