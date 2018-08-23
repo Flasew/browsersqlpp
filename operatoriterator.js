@@ -853,7 +853,7 @@ FullJoinOperator.prototype.constructor = AbstractOpertor;
 FullJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  var lhsIter = makeFromIterator(var envir, this.clause.lhs);
+  var lhsIter = makeFromIterator(this.envir, this.clause.lhs);
   lhsIter.open();
 
   var lhsBuff = [];
@@ -1074,18 +1074,20 @@ function sfwQuery(database, query) {
   var result = new SFWRootIterator(database, query);
   result.open();
 
-  var output = [];
+  //var output = [];
   var row = result.next();
 
   while(!row.done){
-    output.push(row.value);
+    //output.push(row.value);
 
+    fromArea.innerHTML = fromArea.innerHTML + "<tr><td>" + JSON.stringify(row.value) + "</td></tr>";
+  
     row = result.next();
   }
 
   result.close();
 
-  return output;
+  //return output;
 }
 
 
@@ -1101,10 +1103,12 @@ var orderbyArea = document.getElementById("ORDERBY");
 var offsetArea = document.getElementById("OFFSET");
 var limitArea = document.getElementById("LIMIT");
 var selectArea = document.getElementById("SELECT");
-  console.log("1231231");
+
 button.addEventListener("click", function(){
+  fromArea.innerHTML = "";
+
   var input = query.value;
-  console.log("1231231");
+
   var chars = new antlr4.InputStream(input);
   var lexer = new SqlppLexer(chars);
   var tokens  = new antlr4.CommonTokenStream(lexer);
@@ -1118,8 +1122,8 @@ button.addEventListener("click", function(){
 
   var db = JSON.parse(envir.value);
 
-  var output = sfwQuery(db, ast);
+  sfwQuery(db, ast);
 
-  fromArea.innerHTML = JSON.stringify(output);
+  //fromArea.innerHTML = JSON.stringify(output);
 
 });
