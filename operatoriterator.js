@@ -334,11 +334,11 @@ RangeOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   // this.input.open();
 
-  console.log(this.clause);
-  console.log(this.envir);
+  //console.log(this.clause);
+  //console.log(this.envir);
   this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
-  console.log("bindFrom is:");
-  console.log(this.bindFrom);
+  //console.log("bindFrom is:");
+  //console.log(this.bindFrom);
 
   if (!Array.isArray(this.bindFrom)) {
     this.bindFrom = [this.bindFrom];
@@ -1071,7 +1071,7 @@ GroupbyOperator.prototype.open = function() {
     currItem = this.input.next();
   }
 
-  this.keyArr = Object.keys(hashKey);
+  this.keyArr = Object.keys(this.map);
   this.posInKeyArr = 0;
   this.posInKey = 0;
 
@@ -1090,17 +1090,17 @@ GroupbyOperator.prototype.open = function() {
 GroupbyOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if (this.posInKey >= this.keyArr[this.posInKeyArr].length) {
+  if (this.posInKey >= this.map[this.keyArr[this.posInKeyArr]].length) {
     this.posInKeyArr++;
     this.posInKey = 0;
   }
 
   if (this.posInKeyArr >= this.keyArr.length)
     return DONE_ELEMENT;
-  
+
   var currValue = 
     Object.assign({}, this.map[this.keyArr[this.posInKeyArr]][this.posInKey].key);
-  currValuei["group"] = this.map[hashKey][i].group;
+  currValue["group"] = this.map[this.keyArr[this.posInKeyArr]][this.posInKey].group;
 
   this.posInKey++;
 
@@ -1145,14 +1145,16 @@ OrderbyOperator.prototype.open = function() {
     currItem = this.input.next();
   }
 
+  var orderby_clause = this.clause;
+  var environment = this.envir;
+
   // construct the comparison function. 
   var comp = function(t1, t2) {
 
-    for (let condition of this.clause) {
-
+    for (let condition of orderby_clause) {
       // case of equal: go to the next condition
-      let t1res = evalExprQuery(condition.expr, Object.assign({}, t1, this.envir));
-      let t2res = evalExprQuery(condition.expr, Object.assign({}, t2, this.envir));
+      let t1res = evalExprQuery(condition.expr, Object.assign({}, t1, environment));
+      let t2res = evalExprQuery(condition.expr, Object.assign({}, t2, environment));
 
       if (t1res === t2res) {
         continue;
@@ -1174,7 +1176,7 @@ OrderbyOperator.prototype.open = function() {
 OrderbyOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.pos >= this.sortedArr){
+  if(this.pos >= this.sortedArr.length){
     return DONE_ELEMENT;
   }
 
@@ -1188,7 +1190,7 @@ OrderbyOperator.prototype.next = function() {
   };
 }
 
-OrderByOperator.prototype.close = function() {
+OrderbyOperator.prototype.close = function() {
   this.input.close();
   this.constructor.prototype.close.call(this);
 }
@@ -1469,7 +1471,7 @@ SFWRootIterator.prototype.constructor = AbstractOpertor;
 
 SFWRootIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
-  console.log(this.envir);
+  //console.log(this.envir);
    var prevIter = makeFromIterator(this.envir, this.query.from_clause);;
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
@@ -1495,7 +1497,7 @@ SFWRootIterator.prototype.open = function() {
 
   if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
     prevIter = 
-      new OrderByOperator(this.envir, this.query.orderby_clause, prevIter);
+      new OrderbyOperator(this.envir, this.query.orderby_clause, prevIter);
   }
 
   if (this.query.offset_clause !== null && this.query.offset_clause !== undefined) {

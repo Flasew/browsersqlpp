@@ -508,7 +508,7 @@ CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
 
     if (ctx.children[i] !== undefined) {
       let orderDefine = ctx.children[i].getText().toLowerCase();
-      console.log(orderDefine);
+      
       if(orderDefine === 'desc')
         result[resultPos].asc = false;
       else if(orderDefine !== "asc" && orderDefine !== ","){
