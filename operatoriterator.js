@@ -1,3 +1,6 @@
+var hash = require('./node_modules/object-hash/dist/object_hash.js');
+var _ = require('./node_modules/underscore/underscore.js');
+
 /**
  * All possible different expressions used in expression query. 
  * The object 'expression' is essentially a library of different expressions,
@@ -214,6 +217,20 @@ function evalExprQuery(expr, envir) {
   let result = EXPRESSIONS[expr.func](...evaluatedParam, envir);
   // console.log("Eval result: ");
   // console.log(result);
+  return result;
+}
+
+function pathToArr(pathExpr) {
+  var curr = pathExpr;
+  var result = [pathExpr.param[1]];
+
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result.unshift(curr.param[1]);
+  }
+
+  result.unshift(curr.param[0].param[0]);
+
   return result;
 }
 
@@ -880,7 +897,7 @@ FullJoinOperator.prototype.open = function() {
     for (let j = 0; j < rhsBuff.length; j++) {
       
       let newTuple = Object.assign({}, lhsBuff[i], rhsBuff[j]);
-console.log(this.clause.on);
+
       if (evalExprQuery(this.clause.on, newTuple)) {
         this.result.push(newTuple);
         leftincluded[i] = true;
@@ -888,7 +905,7 @@ console.log(this.clause.on);
       }
     }
   }
-console.log(1)
+
   for (let i = 0; i < leftincluded.length; i++) {
 
     if (!leftincluded[i]) {
@@ -899,7 +916,7 @@ console.log(1)
     }
 
   }
-console.log(2)
+
   for (let i = 0; i < rightincluded.length; i++) {
 
     if (!rightincluded[i]) {
@@ -911,7 +928,6 @@ console.log(2)
       this.result.push(newTuple);
     }
   }
-  console.log(3)
 }
 
 FullJoinOperator.prototype.next = function() {
@@ -978,7 +994,318 @@ ExpressionIterator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
+/*-------------------------- GROUP BY CLAUSE --------------------------*/
+/**
+ * "Group By" operator
+ */
+function GroupbyOperator(envir, clause, input) {
+  this.clause = clause;
+  this.envir = envir;
+  this.input = input;
+  AbstractOpertor.call(this);
+  return this;
+}
 
+GroupbyOperator.prototype = Object.create(AbstractOpertor.prototype);
+GroupbyOperator.prototype.constructor = AbstractOpertor;
+
+GroupbyOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.input.open();
+
+  this.result = [];
+  this.map = {};
+
+  var currItem = this.input.next();
+
+  while(!currItem.done){
+    var groupby = {};
+
+    for (let j = 0; j < this.clause.length; j++) {
+      if (this.clause[j].as === undefined) {
+
+        let pathArr = pathToArr(this.clause[j].expr);
+        let curr = groupby;
+
+        while (pathArr.length > 1) {
+          if (curr[pathArr[0]] === undefined) {
+            curr[pathArr[0]] = {};
+          }
+          curr = curr[pathArr[0]];
+          pathArr.shift();
+        }
+
+        curr[pathArr[0]] = evalExprQuery(this.clause[j].expr, currItem.value);
+      }
+
+      else {
+        groupby[this.clause[j].as] = evalExprQuery(this.clause[j].expr, currItem.value);
+      }
+    }
+
+    var hashed = hash(groupby);
+
+    if (this.map[hashed] !== undefined) {
+      var found = false;
+
+      for (let k = 0; k < this.map[hashed].length; k++){
+        if (_.isEqual(this.map[hashed][k].key, groupby)) {
+          this.map[hashed][k].group.push(currItem.value);
+
+          found = true;
+
+          break;
+        }
+      }
+      
+      if(!found){
+        this.map[hashed].push({key: groupby, group: [currItem.value]});
+      }
+    }
+
+    else {
+      this.map[hashed] = [{key: groupby, group: [currItem.value]}];
+    }
+
+    currItem = this.input.next();
+  }
+
+  this.keyArr = Object.keys(hashKey);
+  this.posInKeyArr = 0;
+  this.posInKey = 0;
+
+  // console.log(this.map);
+  // for (let hashKey in this.map) {
+  //   for(let i = 0; i < this.map[hashKey].length; i++){
+  //     let item = Object.assign({}, this.map[hashKey][i].key);
+  //     item["group"] = this.map[hashKey][i].group;
+
+  //     this.result.push(item);
+  //   }
+  // }
+
+}
+
+GroupbyOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  if (this.posInKey >= this.keyArr[this.posInKeyArr].length) {
+    this.posInKeyArr++;
+    this.posInKey = 0;
+  }
+
+  if (this.posInKeyArr >= this.keyArr.length)
+    return DONE_ELEMENT;
+  
+  var currValue = 
+    Object.assign({}, this.map[this.keyArr[this.posInKeyArr]][this.posInKey].key);
+  currValuei["group"] = this.map[hashKey][i].group;
+
+  this.posInKey++;
+
+  return {
+    value: currValue,
+    done: false
+  };
+
+}
+
+GroupbyOperator.prototype.close = function() {
+  this.input.close();
+  this.constructor.prototype.close.call(this);
+}
+
+/*-------------------------- ORDER BY CLAUSE --------------------------*/
+/**
+ * "Order By" operator
+ */
+function OrderbyOperator(envir, clause, input) {
+  this.clause = clause;
+  this.envir = envir;
+  this.input = input;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+OrderbyOperator.prototype = Object.create(AbstractOpertor.prototype);
+OrderbyOperator.prototype.constructor = AbstractOpertor;
+
+OrderbyOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.input.open();
+
+  var unorderedArr = [];
+  var currItem = this.input.next();
+
+  while(!currItem.done){
+    unorderedArr.push(currItem.value);
+
+    currItem = this.input.next();
+  }
+
+  // construct the comparison function. 
+  var comp = function(t1, t2) {
+
+    for (let condition of this.clause) {
+
+      // case of equal: go to the next condition
+      let t1res = evalExprQuery(condition.expr, Object.assign({}, t1, this.envir));
+      let t2res = evalExprQuery(condition.expr, Object.assign({}, t2, this.envir));
+
+      if (t1res === t2res) {
+        continue;
+      }
+
+      // order
+      return condition.asc ? ((t1res < t2res) ? -1 : 1) : ((t1res > t2res) ? -1 : 1);
+
+    }
+
+    return 0;
+  };
+
+  this.sortedArr = unorderedArr.sort(comp);
+
+  this.pos = 0;
+}
+
+OrderbyOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  if(this.pos >= this.sortedArr){
+    return DONE_ELEMENT;
+  }
+
+  var currValue = this.sortedArr[this.pos];
+
+  this.pos++;
+
+  return {
+    value: currValue,
+    done: false
+  };
+}
+
+OrderByOperator.prototype.close = function() {
+  this.input.close();
+  this.constructor.prototype.close.call(this);
+}
+
+/*-------------------------- OFFSET CLAUSE --------------------------*/
+/**
+ * "OFFSET" operator
+ */
+function OffsetOperator(envir, clause, input) {
+  this.clause = clause;
+  this.envir = envir;
+  this.input = input;
+  this.finished = false;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+OffsetOperator.prototype = Object.create(AbstractOpertor.prototype);
+OffsetOperator.prototype.constructor = AbstractOpertor;
+
+OffsetOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.input.open();
+
+  var offset = evalExprQuery(this.clause, this.envir);
+  var skipped = 0;
+
+  while(skipped < offset){
+    var currItem = this.input.next();
+
+    if(!currItem.done){
+      this.finished = true;
+      break;
+    }
+
+    skipped++;
+  }
+}
+
+OffsetOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  if(this.finished){
+    return DONE_ELEMENT;
+  }
+
+  var currItem = this.input.next();
+
+  if(!currItem.done){
+    return DONE_ELEMENT;
+  }
+
+  var currValue = currItem.value;
+
+  return {
+    value: currValue,
+    done: false
+  };
+}
+
+OffsetOperator.prototype.close = function() {
+  this.input.close();
+  this.constructor.prototype.close.call(this);
+}
+
+/*-------------------------- LIMIT CLAUSE --------------------------*/
+/**
+ * "LIMIT" operator
+ */
+function LimitOperator(envir, clause, input) {
+  this.clause = clause;
+  this.envir = envir;
+  this.input = input;
+  this.count = 0;
+  AbstractOpertor.call(this);
+  return this;
+}
+
+LimitOperator.prototype = Object.create(AbstractOpertor.prototype);
+LimitOperator.prototype.constructor = AbstractOpertor;
+
+LimitOperator.prototype.open = function() {
+  this.constructor.prototype.open.call(this);
+
+  this.input.open();
+
+  this.limit = evalExprQuery(this.clause, this.envir);
+}
+
+LimitOperator.prototype.next = function() {
+  this.constructor.prototype.next.call(this);
+
+  if(this.count >= this.limit){
+    return DONE_ELEMENT;
+  }
+
+  var currItem = this.input.next();
+
+  if(!currItem.done){
+    return DONE_ELEMENT;
+  }
+
+  var currValue = currItem.value;
+
+  this.count++;
+
+  return {
+    value: currValue,
+    done: false
+  };
+}
+
+LimitOperator.prototype.close = function() {
+  this.input.close();
+  this.constructor.prototype.close.call(this);
+}
 
 /*-------------------------- SELECT CLAUSE --------------------------*/
 /**
@@ -1150,10 +1477,10 @@ SFWRootIterator.prototype.open = function() {
       new ExpressionIterator(this.envir, this.query.where_clause, prevIter);
   }
 
-  // if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
-  //   prevIter = 
-  //     new GroupbyOperator(this.envir, this.query.groupby_clause, prevIter);
-  // }
+  if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
+    prevIter = 
+      new GroupbyOperator(this.envir, this.query.groupby_clause, prevIter);
+  }
   
   if (this.query.having_clause !== null && this.query.having_clause !== undefined) {
     if (this.query.groupby_clause === null || this.query.groupby_clause === undefined) {
@@ -1166,20 +1493,20 @@ SFWRootIterator.prototype.open = function() {
       new ExpressionIterator(this.envir, this.query.having_clause, prevIter);
   }
 
-  // if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
-  //   prevIter = 
-  //     new OrderByOperator(this.envir, this.query.orderby_clause, prevIter);
-  // }
+  if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
+    prevIter = 
+      new OrderByOperator(this.envir, this.query.orderby_clause, prevIter);
+  }
 
-  // if (this.query.offset_clause !== null && this.query.offset_clause !== undefined) {
-  //   prevIter = 
-  //     new OffsetOperator(this.envir, this.query.offset_clause, prevIter);
-  // }
+  if (this.query.offset_clause !== null && this.query.offset_clause !== undefined) {
+    prevIter = 
+      new OffsetOperator(this.envir, this.query.offset_clause, prevIter);
+  }
 
-  // if (this.query.limit_clause !== null && this.query.limit_clause !== undefined) {
-  //   prevIter = 
-  //     new LimitOperator(this.envir, this.query.limit_clause, prevIter);
-  // }
+  if (this.query.limit_clause !== null && this.query.limit_clause !== undefined) {
+    prevIter = 
+      new LimitOperator(this.envir, this.query.limit_clause, prevIter);
+  }
 
   this.finalIter = makeSelectIterator(this.envir, this.query.select_clause, prevIter);
   // have fun :)
