@@ -1,6 +1,94 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
 var _ = require('./node_modules/underscore/underscore.js');
 
+/*--------------------------- ENUM OF OPERATOR TYPES ---------------------*/
+/**
+ * Type of different "from operations" as an enum. Used in the from clause. 
+ */
+const FROM_OP_TYPES = Object.freeze({
+  RANGE:      0,
+  COMMA:      1,
+  INNERJOIN:  2,
+  LEFTJOIN:   3,
+  RIGHTJOIN:  4,
+  FULLJOIN:   5,
+  INNERCORR:  6,
+  LEFTCORR:   7,
+  FULLCORR:   8,
+  INNERFLAT:  9,
+  OUTERFLAT:  10,
+  RANGEPAIR:  11
+});
+
+/**
+ * Type of different "select" as an enum. Used in the select clause.
+ * Note: SQLSELECT is a syntactic sugar of the element case; during query 
+ * execution it will be converted to an "select element" clause.
+ */
+const SEL_TYPES = Object.freeze({
+  ELEMENT:   0,
+  ATTRIBUTE: 1,
+  SQLSELECT: 2
+});
+
+const AGGR_FUNC = Object.freeze(['avg', 'sum', 'max', 'min', 'count']);
+
+const SET_OP_TYPES = Object.freeze({
+  UNION:     0,
+  INTERSECT: 1,
+  EXCEPT:    2
+});
+
+/*--------------------------- UTILITY FUNCTIONS --------------------------*/
+
+/**
+ * Convert a path expression object to an array object, each element being a
+ * name of of the variable in the path (i.e. x.a => ['x', 'a']. 
+ * Notice that the input expression must only have "path" 
+ * and "variable" expressions in it.
+ * @param  {object} pathExpr expression of the path
+ * @return {array}           an array equivalent to the path
+ */
+function pathToArr(pathExpr) {
+  var curr = pathExpr;
+  var result = [pathExpr.param[1]];
+
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result.unshift(curr.param[1]);
+  }
+
+  result.unshift(curr.param[0].param[0]);
+
+  return result;
+}
+
+/**
+ * Collect all of the output of an iterator to an array. 
+ * Precondition: iterator is not opened.
+ * Postcondition: iterator is closed.
+ * @param  {object} iterator an iterator object
+ * @return {array}          all output of the iterator
+ */
+function collectFromIterator(iterator) {
+
+  iterator.open();
+
+  var result = [];
+  var row = iterator.next();
+
+  while (!row.done) {
+    result.push(row.value);
+    row = iterator.next();
+  }
+
+  iterator.close();
+
+  return result;
+}
+
+/*--------------------------- EXPRESSIONS --------------------------*/
+
 /**
  * All possible different expressions used in expression query. 
  * The object 'expression' is essentially a library of different expressions,
@@ -158,14 +246,8 @@ const EXPRESSIONS = {
 
   // nested SWF query
   sfw: function(query, db) {
-    // console.log("SUBQUERY");
-    // console.log("query: ");
-    // console.log(query);
-    // console.log("db: ");
-    // console.log(db);
+
     var result = sfwQuery(db, query);
-    // console.log("Sub-query result: ");
-    // console.log(result);
     return result;
   }
 
@@ -191,54 +273,30 @@ function evalExprQuery(expr, envir) {
 
   expr = Object.assign({}, expr);
 
-  // console.log("Function name: " + expr.func);
-  // console.log("Parameters: ");
-  // console.log(expr.param);
-  // console.log("envir: ")
-  // console.log(envir)
-
   let evaluatedParam = [];
+
   // evaluate parameters first if they're EXPRESSIONS
   for (let i = 0; i < expr.param.length; i++) 
 
     if (expr.param[i].isExpr) {
-      // console.log("expr.param before: ")
-      // console.log(expr.param[i])
       evaluatedParam[i] = evalExprQuery(expr.param[i], envir);
-      // console.log("expr.param after: ")
-      // console.log(expr.param[i])
     }
     else {
       evaluatedParam[i] = expr.param[i];
     }
 
-  //console.log(evaluatedParam);
-
   let result = EXPRESSIONS[expr.func](...evaluatedParam, envir);
-  // console.log("Eval result: ");
-  // console.log(result);
-  return result;
-}
-
-function pathToArr(pathExpr) {
-  var curr = pathExpr;
-  var result = [pathExpr.param[1]];
-
-  while (curr.param[0].func !== 'variable') {
-    curr = curr.param[0];
-    result.unshift(curr.param[1]);
-  }
-
-  result.unshift(curr.param[0].param[0]);
 
   return result;
 }
 
+/*-------------------------------- ITERATORS -----------------------------*/
 
 /**
  * Base abstract operator "class".
  */
 
+// element signaling an iterator is empty.
 const DONE_ELEMENT = {value: undefined, done: true};
 
 function AbstractOpertor() {
@@ -246,6 +304,7 @@ function AbstractOpertor() {
 
 AbstractOpertor.prototype.isOpen = false;
 
+// the base functions check if the iterator has the appropriate state.
 AbstractOpertor.prototype.open = function() {
   if (this.isOpen)
     throw {
@@ -273,39 +332,49 @@ AbstractOpertor.prototype.close = function() {
   this.isOpen = false;
 }
 
+/*
+ * For the following operator iterators, the input arguments are:
+ * @param {object} envir binding environment
+ * @param {object} clause corresponding query clause AST
+ * @param {object} input input iterator from preceding operator 
+ */
 
 /* ------------------------- FROM CLAUSE --------------------------*/
 /**
- * from item iterator factory
+ * Factory method to make an iterator of the from clause. Returns the correct
+ * iterator object corresponding to the from clause.
+ * @param  {object} envir  environment binding
+ * @param  {object} clause from clause AST
+ * @return {object}        corresponding iterator
  */
 function makeFromIterator(envir, clause) {
   switch (clause.opType) {
-    case 0: 
+    case FROM_OP_TYPES.RANGE: 
       return new RangeOperator(envir, clause);
 
-    case 11: 
+    case FROM_OP_TYPES.RANGEPAIR: 
       return new RangePairOperator(envir, clause);
 
-    case 1: 
-    case 6: 
-    case 9: 
+    case FROM_OP_TYPES.INNERCORR: 
+    case FROM_OP_TYPES.COMMA: 
+    case FROM_OP_TYPES.INNERFLAT: 
       return new CartesianOperator(envir, clause);
 
-    case 2:
+    case FROM_OP_TYPES.INNERJOIN:
       return new InnerJoinOperator(envir, clause);
 
-    case 3:
+    case FROM_OP_TYPES.LEFTJOIN:
       return new LeftJoinOperator(envir, clause);
 
-    case 7: 
-    case 10: 
+    case FROM_OP_TYPES.LEFTCORR: 
+    case FROM_OP_TYPES.OUTERFLAT: 
       return new LeftCorrOperator(envir, clause);
 
-    case 4:
+    case FROM_OP_TYPES.RIGHTJOIN:
       return new RightJoinOperator(envir, clause);
 
-    case 5: 
-    case 8: 
+    case FROM_OP_TYPES.FULLJOIN: 
+    case FROM_OP_TYPES.FULLCORR: 
       return new FullJoinOperator(envir, clause);
 
     default: 
@@ -317,12 +386,11 @@ function makeFromIterator(envir, clause) {
 }
 
 /**
- * "range" operator of the from clause
+ * "range" operator of the from clause. Non-blocking.
  */
-function RangeOperator(envir, /*input,*/ clause) {
+function RangeOperator(envir, clause) {
   this.clause = clause;
   this.envir = envir;
-  // this.input = input;
   AbstractOpertor.call(this);
   return this;
 }
@@ -332,13 +400,8 @@ RangeOperator.prototype.constructor = AbstractOpertor;
 
 RangeOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
-  // this.input.open();
 
-  //console.log(this.clause);
-  //console.log(this.envir);
   this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
-  //console.log("bindFrom is:");
-  //console.log(this.bindFrom);
 
   if (!Array.isArray(this.bindFrom)) {
     this.bindFrom = [this.bindFrom];
@@ -347,25 +410,18 @@ RangeOperator.prototype.open = function() {
   this.bindTo = this.clause.bindTo;
   this.pos = 0;
 
-  // this.currBindTuple = this.input.next();
-
   this.pivot = this.clause.at;
   this.pivotIndex = 1;
 }
 
+// returns the next tuple in the bindFrom array with the binding name
 RangeOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.pos >= this.bindFrom.length)//{
-    // this.currBindTuple = this.input.next();
-    // this.pos = 0;
-  // }
-
-  // if(this.currBindTuple.done === true){
+  if(this.pos >= this.bindFrom.length)
     return DONE_ELEMENT;
-  // }
 
-  var currValue = {}; //Object.assign({}, this.currBindTuple.value);
+  var currValue = {}; 
   currValue[this.bindTo] = this.bindFrom[this.pos];
 
   this.pos++;
@@ -383,17 +439,15 @@ RangeOperator.prototype.next = function() {
 }
 
 RangeOperator.prototype.close = function() {
-  // this.input.close();
   this.constructor.prototype.close.call(this);
 }
 
 /**
- * "range pair" operator of the from clause
+ * "range pair" operator of the from clause. Non-blocking.
  */
-function RangePairOperator(envir, /*input,*/ clause) {
+function RangePairOperator(envir, clause) {
   this.clause = clause;
   this.envir = envir;
-  // this.input = input;
   AbstractOpertor.call(this);
   return this;
 }
@@ -403,11 +457,10 @@ RangePairOperator.prototype.constructor = AbstractOpertor;
 
 RangePairOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
-  // this.input.open();
 
   this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
 
-  //check type: should be object, not array
+  // check type: should be object, not array
   if (typeof(this.bindFrom) !== 'object' || Array.isArray(this.bindFrom)) {
     throw{
       name: 'NotObject',
@@ -423,22 +476,16 @@ RangePairOperator.prototype.open = function() {
   this.keyArr = Object.keys(this.bindFrom);
   this.posInKeyArr = 0;
 
-  // this.currBindTuple = this.input.next();
 }
 
+// returns the next attribute in the bindFrom array with the binding name
 RangePairOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.posInKeyArr >= this.keyArr.length) // {
-  //   this.currBindTuple = this.input.next();
-  //   this.posInKeyArr = 0;
-  // }
-
-  // if(this.currBindTuple.done === true){
+  if(this.posInKeyArr >= this.keyArr.length) 
     return DONE_ELEMENT;
-  // }
 
-  var currValue = {}; // Object.assign({}, this.currBindTuple.value);
+  var currValue = {}; 
 
   currValue[this.attrName] = this.keyArr[this.posInKeyArr];
   currValue[this.attrVal] = this.bindFrom[this.keyArr[this.posInKeyArr]];
@@ -452,13 +499,14 @@ RangePairOperator.prototype.next = function() {
 }
 
 RangePairOperator.prototype.close = function() {
-  // this.input.close();
   this.constructor.prototype.close.call(this);
 }
 
 
 /**
- * "Cartesian" operator of the from clause
+ * "Cartesian" operator of the from clause. Non-blocking.
+ * Open both the lhs and rhs as iterators. For each tuple of the lhs, 
+ * match all the tuple of the rhs in the next() call.
  */
 function CartesianOperator(envir, clause) {
   this.clause = clause;
@@ -491,7 +539,7 @@ CartesianOperator.prototype.next = function() {
 
     this.lhsTuple = this.lhsIter.next();
 
-    if (this.lhsTuple.done === true) {
+    if (this.lhsTuple.done) {
       this.lhsIter.close();
       return DONE_ELEMENT;
     }
@@ -519,7 +567,8 @@ CartesianOperator.prototype.close = function() {
 }
 
 /**
- * "Inner join" operator of the from clause
+ * "Inner join" operator of the from clause. Mostly same with the Cartesian 
+ * except inner join will assert the "on" condition.
  */
 function InnerJoinOperator(envir, clause) {
   this.clause = clause;
@@ -547,8 +596,7 @@ InnerJoinOperator.prototype.next = function() {
 
   var currValue;
   do {
-
-    while (this.rhsTuple.done === true) {
+    while (this.rhsTuple.done) {
 
       if (this.rhsIter !== undefined) 
         this.rhsIter.close();
@@ -585,7 +633,10 @@ InnerJoinOperator.prototype.close = function() {
 }
 
 /**
- * "Left join" operator of the from clause
+ * "Left join" operator of the from clause. Similar to the inner join iterator
+ * but for each lhs tuple, record if there was a match after asserting the 
+ * 'on' condition for all of the rhs tuples. If none was found, a 'null'
+ * will be attached to the attribute provided by the rhs iterator. 
  */
 function LeftJoinOperator(envir, clause) {
   this.clause = clause;
@@ -619,14 +670,14 @@ LeftJoinOperator.prototype.next = function() {
   do {
     // check if RHS is empty. if so, advance LHS to match the 
     // next tuple. If LHS is also empty, we're done.
-    while (this.rhsTuple.done === true) {
+    if (this.rhsTuple.done) {
 
       if (this.rhsIter !== undefined) 
         this.rhsIter.close();
 
       // if no match for the LHS variable was found, 
       // add a null as the RHS bindto result.
-      if (this.matched === false) {
+      if (!this.matched) {
         currValue = Object.assign({}, this.lhsTuple.value);
         currValue[this.clause.rhs.bindTo] = null;
         unmatchedReturn = true;
@@ -674,7 +725,8 @@ LeftJoinOperator.prototype.close = function() {
 }
 
 /**
- * "Left Correlate" operator of the from clause
+ * "Left Correlate" operator of the from clause. Similar to left join, add null
+ * to rhs if rhs returns empty.
  */
 function LeftCorrOperator(envir, clause) {
   this.clause = clause;
@@ -704,7 +756,7 @@ LeftCorrOperator.prototype.next = function() {
 
   var currValue;
 
-  if (this.rhsTuple.done === true) {
+  if (this.rhsTuple.done) {
 
     if (this.rhsIter !== undefined) 
       this.rhsIter.close();
@@ -713,7 +765,7 @@ LeftCorrOperator.prototype.next = function() {
     this.lhsTuple = this.lhsIter.next();
     this.matched = false;
 
-    if (this.lhsTuple.done === true) {
+    if (this.lhsTuple.done) {
       this.lhsIter.close();
       return DONE_ELEMENT;
     }
@@ -725,7 +777,7 @@ LeftCorrOperator.prototype.next = function() {
     this.rhsTuple = this.rhsIter.next();
 
     // if rhsIterator gives empty, returns the empty case of RHS = null
-    if (this.rhsTuple.done === true) {
+    if (this.rhsTuple.done) {
       currValue = Object.assign({}, this.lhsTuple.value);
       currValue[this.clause.rhs.bindTo] = null;
       return {
@@ -752,7 +804,7 @@ LeftCorrOperator.prototype.close = function() {
 }
 
 /**
- * "Right join" operator of the from clause
+ * "Right join" operator of the from clause. just flip lhs and rhs of left join
  */
 function RightJoinOperator(envir, clause) {
   this.clause = clause;
@@ -786,14 +838,14 @@ RightJoinOperator.prototype.next = function() {
   do {
     // check if RHS is empty. if so, advance LHS to match the 
     // next tuple. If LHS is also empty, we're done.
-    while (this.lhsTuple.done === true) {
+    if (this.lhsTuple.done === true) {
 
       if (this.lhsIter !== undefined) 
         this.lhsIter.close();
 
       // if no match for the LHS variable was found, 
       // add a null as the RHS bindto result.
-      if (this.matched === false) {
+      if (!this.matched) {
         currValue = Object.assign({}, this.rhsTuple.value);
         currValue[this.clause.lhs.bindTo] = null;
         unmatchedReturn = true;
@@ -803,7 +855,7 @@ RightJoinOperator.prototype.next = function() {
       this.rhsTuple = this.rhsIter.next();
       this.matched = false;
 
-      if (this.rhsTuple.done === true) {
+      if (this.rhsTuple.done) {
         this.rhsIter.close();
         return DONE_ELEMENT;
       }
@@ -842,13 +894,12 @@ RightJoinOperator.prototype.close = function() {
 
 /**
  * "Full join" operator of the from clause
- * Blocking Operator
+ * Blocking Operator, do the good old boolean array full join first and then
+ * use pos to gather the return values used for next.
  */
 function FullJoinOperator(envir, clause) {
   this.clause = clause;
   this.envir = envir;
-  this.result = [];
-  this.pos = 0;
   AbstractOpertor.call(this);
   return this;
 }
@@ -859,36 +910,11 @@ FullJoinOperator.prototype.constructor = AbstractOpertor;
 FullJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  var lhsIter = makeFromIterator(this.envir, this.clause.lhs);
-  lhsIter.open();
+  this.result = [];
+  this.pos = 0;
 
-  var lhsBuff = [];
-
-  var currTuple = lhsIter.next();
-
-  while(!currTuple.done){
-    lhsBuff.push(currTuple.value);
-
-    currTuple = lhsIter.next();
-  }
-
-  lhsIter.close();
-
-  var rhsIter = makeFromIterator(this.envir, this.clause.rhs);
-  rhsIter.open();
-
-  var rhsBuff = [];
-
-  currTuple = rhsIter.next();
-
-  while(!currTuple.done){
-    rhsBuff.push(currTuple.value);
-
-    currTuple = rhsIter.next();
-  }
-
-  rhsIter.close();
-
+  var lhsBuff = collectFromIterator(makeFromIterator(this.envir, this.clause.lhs));
+  var rhsBuff = collectFromIterator(makeFromIterator(this.envir, this.clause.rhs));
 
   let leftincluded = Array(lhsBuff.length).fill(false);
   let rightincluded = Array(rhsBuff.length).fill(false);
@@ -927,27 +953,22 @@ FullJoinOperator.prototype.open = function() {
       
       this.result.push(newTuple);
     }
+
   }
 }
 
 FullJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  var currValue;
-
-  if(this.pos < this.result.length){
-    currValue = {
+  if (this.pos < this.result.length) {
+    this.pos++;
+    return  {
       value: this.result[this.pos],
       done: false
     };
   }
-  else{
-    currValue = DONE_ELEMENT;
-  }
 
-  this.pos++;
-
-  return currValue;
+  return DONE_ELEMENT;
 }
 
 FullJoinOperator.prototype.close = function() {
@@ -957,7 +978,8 @@ FullJoinOperator.prototype.close = function() {
 /*-------------------------- EXPRESSIONS --------------------------*/
 
 /**
- * Iterator for expression queries
+ * Iterator for expression queries. For each tuple in the input iterator, 
+ * evaluate clause and return.
  */
 function ExpressionIterator(envir, clause, input) {
   this.clause = clause;
@@ -996,7 +1018,8 @@ ExpressionIterator.prototype.close = function() {
 
 /*-------------------------- GROUP BY CLAUSE --------------------------*/
 /**
- * "Group By" operator
+ * "Group By" operator. Build the hashtable on the all the result of input (blocking),
+ * but each return tuple is computed on-the-go.
  */
 function GroupbyOperator(envir, clause, input) {
   this.clause = clause;
@@ -1013,8 +1036,6 @@ GroupbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.input.open();
-
-  this.result = [];
   this.map = {};
 
   var currItem = this.input.next();
@@ -1052,9 +1073,7 @@ GroupbyOperator.prototype.open = function() {
       for (let k = 0; k < this.map[hashed].length; k++){
         if (_.isEqual(this.map[hashed][k].key, groupby)) {
           this.map[hashed][k].group.push(currItem.value);
-
           found = true;
-
           break;
         }
       }
@@ -1074,16 +1093,6 @@ GroupbyOperator.prototype.open = function() {
   this.keyArr = Object.keys(this.map);
   this.posInKeyArr = 0;
   this.posInKey = 0;
-
-  // console.log(this.map);
-  // for (let hashKey in this.map) {
-  //   for(let i = 0; i < this.map[hashKey].length; i++){
-  //     let item = Object.assign({}, this.map[hashKey][i].key);
-  //     item["group"] = this.map[hashKey][i].group;
-
-  //     this.result.push(item);
-  //   }
-  // }
 
 }
 
@@ -1118,7 +1127,8 @@ GroupbyOperator.prototype.close = function() {
 
 /*-------------------------- ORDER BY CLAUSE --------------------------*/
 /**
- * "Order By" operator
+ * "Order By" operator. Do a sort on collected output of input iterator.
+ * Has blocking nature.
  */
 function OrderbyOperator(envir, clause, input) {
   this.clause = clause;
@@ -1134,16 +1144,7 @@ OrderbyOperator.prototype.constructor = AbstractOpertor;
 OrderbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  this.input.open();
-
-  var unorderedArr = [];
-  var currItem = this.input.next();
-
-  while(!currItem.done){
-    unorderedArr.push(currItem.value);
-
-    currItem = this.input.next();
-  }
+  var unorderedArr = collectFromIterator(input);
 
   var orderby_clause = this.clause;
   var environment = this.envir;
@@ -1191,19 +1192,18 @@ OrderbyOperator.prototype.next = function() {
 }
 
 OrderbyOperator.prototype.close = function() {
-  this.input.close();
   this.constructor.prototype.close.call(this);
 }
 
 /*-------------------------- OFFSET CLAUSE --------------------------*/
 /**
- * "OFFSET" operator
+ * "OFFSET" operator. Skip the first specified number of tuples on open.
  */
 function OffsetOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
-  this.finished = false;
+
   AbstractOpertor.call(this);
   return this;
 }
@@ -1215,6 +1215,7 @@ OffsetOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.input.open();
+  this.finished = false;
 
   var offset = evalExprQuery(this.clause, this.envir);
   var skipped = 0;
@@ -1222,7 +1223,7 @@ OffsetOperator.prototype.open = function() {
   while(skipped < offset){
     var currItem = this.input.next();
 
-    if(!currItem.done){
+    if (!currItem.done) {
       this.finished = true;
       break;
     }
@@ -1234,22 +1235,19 @@ OffsetOperator.prototype.open = function() {
 OffsetOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.finished){
+  if(this.finished)
     return DONE_ELEMENT;
-  }
 
   var currItem = this.input.next();
 
-  if(!currItem.done){
+  if(currItem.done)
     return DONE_ELEMENT;
-  }
-
-  var currValue = currItem.value;
 
   return {
-    value: currValue,
+    value: currItem.value,
     done: false
   };
+
 }
 
 OffsetOperator.prototype.close = function() {
@@ -1259,13 +1257,13 @@ OffsetOperator.prototype.close = function() {
 
 /*-------------------------- LIMIT CLAUSE --------------------------*/
 /**
- * "LIMIT" operator
+ * "LIMIT" operator. Count only output specified number of tuples and then 
+ * gives DONE_ELEMENT.
  */
 function LimitOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
-  this.count = 0;
   AbstractOpertor.call(this);
   return this;
 }
@@ -1277,29 +1275,25 @@ LimitOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.input.open();
-
+  this.count = 0;
   this.limit = evalExprQuery(this.clause, this.envir);
 }
 
 LimitOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.count >= this.limit){
+  if(this.count >= this.limit)
     return DONE_ELEMENT;
-  }
-
+  
   var currItem = this.input.next();
 
-  if(!currItem.done){
+  if(currItem.done)
     return DONE_ELEMENT;
-  }
-
-  var currValue = currItem.value;
 
   this.count++;
 
   return {
-    value: currValue,
+    value: currItem.value,
     done: false
   };
 }
@@ -1315,11 +1309,11 @@ LimitOperator.prototype.close = function() {
  */
 function makeSelectIterator(envir, clause, input) {
   switch (clause.selectType) {
-    case 0: 
-    case 2:
+    case SEL_TYPES.ELEMENT: 
+    case SEL_TYPES.SQLSELECT:
       return new SelectElementOperator(envir, clause, input);
 
-    case 1: 
+    case SEL_TYPES.ATTRIBUTE: 
       return new SelectAttrOperator(envir, clause, input);
 
     default: 
@@ -1330,8 +1324,9 @@ function makeSelectIterator(envir, clause, input) {
   }
 }
 /**
- * "Select" operator, mostly similar to the projection operator in 
- * relational algebra.
+ * "Select element" operator, mostly similar to the projection operator in 
+ * relational algebra. If the input operator is a SQL type of select, 
+ * convert it to the equivalent Select Element clause first.
  */
 function SelectElementOperator(envir, clause, input) {
   this.clause = clause;
@@ -1348,7 +1343,7 @@ SelectElementOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   // check if the type was select. if so, convert to the sel element clause
-  if (this.clause.selectType === 2) {
+  if (this.clause.selectType === SEL_TYPES.SQLSELECT) {
 
     var elementReconstruct = {
       selectType: 0,
@@ -1382,13 +1377,13 @@ SelectElementOperator.prototype.open = function() {
 SelectElementOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  var result = this.input.next();
+  var currItem = this.input.next();
 
-  if (result.done) 
+  if (currItem.done) 
     return DONE_ELEMENT;
   else 
     return {
-      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, result.value, this.envir)),
+      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, currItem.value, this.envir)),
       done: false
     }; 
 }
@@ -1398,7 +1393,11 @@ SelectElementOperator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
-
+/**
+ * Select attribute operator. This operator is special in a sense that it is 
+ * blocking and is guaranteed to return only one valid output in the next 
+ * method, which is an object as specified by the query clause. 
+ */
 function SelectAttrOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
@@ -1459,6 +1458,12 @@ SelectAttrOperator.prototype.close = function() {
 }
 
 /*----------------------- SFW ROOT ITERATOR ------------------------*/
+
+/** 
+ * The SFW root iterator creates a pipeline structures of all of the iterators
+ * required to finish the query clause. it iterates through the final output 
+ * of the query.
+ */
 function SFWRootIterator(envir, query) {
   this.query = query;
   this.envir = envir;
@@ -1471,8 +1476,8 @@ SFWRootIterator.prototype.constructor = AbstractOpertor;
 
 SFWRootIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
-  //console.log(this.envir);
-   var prevIter = makeFromIterator(this.envir, this.query.from_clause);;
+
+  var prevIter = makeFromIterator(this.envir, this.query.from_clause);;
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
     prevIter = 
@@ -1511,6 +1516,7 @@ SFWRootIterator.prototype.open = function() {
   }
 
   this.finalIter = makeSelectIterator(this.envir, this.query.select_clause, prevIter);
+  
   // have fun :)
   this.finalIter.open();
 }
@@ -1525,38 +1531,34 @@ SFWRootIterator.prototype.close = function() {
   this.constructor.prototype.close.call(this);
 }
 
-
+/**
+ * Evaluate an SFW (select-from-where) query.
+ * @param  {object} db    raw database parsed to javascript object (NOT JSON)
+ * @param  {object} query Parsed query clause, in the format specified in readme.
+ * @return {object}       result of query, in javascript object (NOT JSON)
+ */
 function sfwQuery(database, query) {
-  var result = new SFWRootIterator(database, query);
-  result.open();
 
-  var output;
+  var result = collectFromIterator(new SFWRootIterator(database, query));
 
-  if(query.select_clause.selectType === 1){
-    output = result.next().value;
-  }
-  else{
-    output = [];
-    var row = result.next();
-
-    while(!row.done){
-      output.push(row.value);
-  
-      row = result.next();
-    }
+  if (query.select_clause.selectType === 1) {
+    return result[0];
   }
 
-  result.close();
-
-  return output;
+  return result;
 }
 
+/**
+ * Evaluate a general query
+ */
+function evalQuery(db, query) {
 
+  if (query.from_clause !== undefined)
+    return sfwQuery(db, query);
 
-
-
-
-
+  return evalExprQuery(query, db);
+    
+}
 
 var query = document.getElementById("QUERY");
 var envir = document.getElementById("DB");
@@ -1592,7 +1594,5 @@ button.addEventListener("click", function(){
   else{
       selectArea.innerHTML = selectArea.innerHTML + "<tr><td>" + JSON.stringify(queryResult) + "</td></tr>";
   }
-
-  //fromArea.innerHTML = JSON.stringify(output);
 
 });
