@@ -138,8 +138,8 @@ SqlppVisitor.prototype.visitExprBag = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprNestSWF.
-SqlppVisitor.prototype.visitExprNestSWF = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprNestSFW.
+SqlppVisitor.prototype.visitExprNestSFW = function(ctx) {
   return this.visitChildren(ctx);
 };
 
