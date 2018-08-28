@@ -690,6 +690,125 @@ function testLimit() {
 }
 
 // entire queries
+const SELCL = {selectType: 0, selectExpr: VARY};
+const SELAGGRCL = {
+  selectType: 2, 
+  selectPairs: [{
+    from: {func: 'avg', param: [JSON.stringify({func: 'path', param: [VARX, 'a'], isExpr: true})], isExpr: true},
+    as: 'avg'
+  }]
+};
+const FROMCL = {opType: 0, bindFrom: VARX, bindTo: 'y', at: undefined};
+const WHERECL = TRIVIAL;
+const GROUPBYCL = [{expr: {func: 'path', param: [VARY, 'b'], isExpr: true}, as: 'c'}];
+const HAVINGCL = {
+  func: 'gt',
+  param: [{
+    func: 'count', 
+    param: [{func: 'variable', param: ['group'], isExpr: true}],
+    isExpr: true
+  }, 7],
+  isExpr: true
+};
+const ORDERBYCL = [
+  {expr: {func: 'path', param: [VARX, 'order'], isExpr: true}, asc: false},
+  {expr: VARY, asc: true},
+  {expr: VARZ, asc: true}
+]; 
+const ORDERBYAGGRCL = [
+  {expr: {func: 'path', param: [VARX, 'order'], isExpr: true}, asc: false},
+  {
+    expr: {func: 'max', param: [JSON.stringify({func: 'path', param: [VARX, 'a'], isExpr: true})], isExpr: true}, 
+    asc: true
+  },
+  {expr: VARZ, asc: true}
+]; 
+const OFFSETCL = 5;
+const LIMITCL = 6;
+
+const BASEAST = {
+  select_clause:  SELCL,
+  from_clause:    FROMCL,
+  where_clause:   null,
+  groupby_clause: null,
+  having_clause:  null,
+  orderby_clause: null,
+  limit_clause:   null,
+  offset_clause:  null,
+}
+
+function testSF() {
+  var parser = initParser('SELECT ELEMENT y FROM x AS y');
+  var ast = visitor.visit(parser.sfw_query());
+  var expected = Object.assign({}, BASEAST);
+  assertEquals(expected, ast);
+
+  var parser = initParser('FROM x AS y SELECT ELEMENT y');
+  var ast = visitor.visit(parser.sfw_query());
+  assertEquals(expected, ast);
+}
+
+function testSFW() {
+  var parser = initParser('SELECT ELEMENT y FROM x AS y WHERE 5 = 5');
+  var ast = visitor.visit(parser.sfw_query());
+  var expected = Object.assign({}, BASEAST);
+  expected.where_clause = WHERECL;
+  assertEquals(expected, ast);
+
+  var parser = initParser('FROM x AS y WHERE 5 = 5 SELECT ELEMENT y');
+  var ast = visitor.visit(parser.sfw_query());
+  assertEquals(expected, ast);
+}
+
+function testSFWGH() {
+  var parser = initParser('SELECT ELEMENT y FROM x AS y WHERE 5 = 5 GROUP BY y.b AS c HAVING count(group) > 7');
+  var ast = visitor.visit(parser.sfw_query());
+  var expected = Object.assign({}, BASEAST);
+  expected.where_clause = WHERECL;
+  expected.groupby_clause = GROUPBYCL;
+  expected.having_clause = HAVINGCL;
+  assertEquals(expected, ast);
+
+  var parser = initParser('FROM x AS y WHERE 5 = 5 GROUP BY y.b AS c HAVING count(group) > 7 SELECT ELEMENT y');
+  var ast = visitor.visit(parser.sfw_query());
+  assertEquals(expected, ast);
+}
+
+function testSFWOOL() {
+  var parser = initParser('SELECT ELEMENT y FROM x AS y WHERE 5 = 5 ORDER BY x.order DESC, y ASC, z LIMIT 6 OFFSET 5');
+  var ast = visitor.visit(parser.sfw_query());
+  var expected = Object.assign({}, BASEAST);
+  expected.where_clause = WHERECL;
+  expected.orderby_clause = ORDERBYCL;
+  expected.limit_clause = LIMITCL;
+  expected.offset_clause = OFFSETCL;
+  assertEquals(expected, ast);
+
+  var parser = initParser('FROM x AS y WHERE 5 = 5 ORDER BY x.order DESC, y ASC, z LIMIT 6 OFFSET 5 SELECT ELEMENT y');
+  var ast = visitor.visit(parser.sfw_query());
+  assertEquals(expected, ast);
+} 
+
+function testSFWAll() {
+  var parser = initParser('SELECT avg(x.a) as avg FROM x AS y WHERE 5 = 5 GROUP BY y.b AS c HAVING count(group) > 7 ORDER BY x.order DESC, max(x.a) ASC, z LIMIT 6 OFFSET 5');
+  var ast = visitor.visit(parser.sfw_query());
+  var expected = Object.assign({}, BASEAST);
+  expected.select_clause = SELAGGRCL;
+  expected.where_clause = WHERECL;
+  expected.groupby_clause = GROUPBYCL;
+  expected.having_clause = HAVINGCL;
+  expected.orderby_clause = ORDERBYAGGRCL;
+  expected.limit_clause = LIMITCL;
+  expected.offset_clause = OFFSETCL;
+  assertEquals(expected, ast);
+
+  var parser = initParser('FROM x AS y WHERE 5 = 5 GROUP BY y.b AS c HAVING count(group) > 7 ORDER BY x.order DESC, max(x.a) ASC, z LIMIT 6 OFFSET 5 SELECT avg(x.a) as avg ');
+  var ast = visitor.visit(parser.sfw_query());
+  assertEquals(expected, ast);
+}
+
+
+
 
 testExprValueInt();
 testExprValueFloat();
@@ -729,5 +848,8 @@ testHaving();
 testOrderby();
 testOffset();
 testLimit();
+testSF();
+testSFW();
+testSFWGH();
 
 
