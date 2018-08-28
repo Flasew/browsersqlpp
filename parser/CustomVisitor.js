@@ -175,14 +175,16 @@ CustomVisitor.prototype.visitFromFlatten = function(ctx) {
 
   result.lhs = {
     opType: 0,
-    bindFrom: this.visit(ctx.lexpr()),
-    bindTo: ctx.lvar.text
+    bindFrom: this.visit(ctx.lexpr),
+    bindTo: ctx.lvar.getText(),
+    at: undefined
   };
 
   result.rhs = {
     opType: 0,
-    bindFrom: this.visit(ctx.rexpr()),
-    bindTo: ctx.rvar.text
+    bindFrom: this.visit(ctx.rexpr),
+    bindTo: ctx.rvar.getText(),
+    at: undefined
   };
 
   return result;
