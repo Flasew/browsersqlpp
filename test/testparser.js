@@ -4,17 +4,13 @@
  * only those clause with significant visitor code will be tested.
  */
 
-const _ = require('./node_modules/underscore/underscore.js');
-const util = require('./node_modules/util')
-const antlr4 = require('./node_modules/antlr4/index');
-const SqlppLexer = require('./parser/SqlppLexer').SqlppLexer;
-const SqlppParser = require('./parser/SqlppParser').SqlppParser;
-const SqlppVisitor = require('./parser/CustomVisitor').CustomVisitor;
+const _ = require('../node_modules/underscore/underscore.js');
+const util = require('../node_modules/util')
+const antlr4 = require('../node_modules/antlr4/index');
+const SqlppLexer = require('../parser/SqlppLexer').SqlppLexer;
+const SqlppParser = require('../parser/SqlppParser').SqlppParser;
+const SqlppVisitor = require('../parser/CustomVisitor').CustomVisitor;
 var visitor = new SqlppVisitor();
-
-const VARX = {func: 'variable', param: ['x'], isExpr: true};
-const VARY = {func: 'variable', param: ['y'], isExpr: true};
-const VARZ = {func: 'variable', param: ['z'], isExpr: true};
 
 function assertEquals(expected, actual) {
 
@@ -40,6 +36,11 @@ function initParser(input) {
   parser.buildParseTrees = true;
   return parser;
 }
+
+
+const VARX = {func: 'variable', param: ['x'], isExpr: true};
+const VARY = {func: 'variable', param: ['y'], isExpr: true};
+const VARZ = {func: 'variable', param: ['z'], isExpr: true};
 
 // expression queries
 function testExprValueInt() {

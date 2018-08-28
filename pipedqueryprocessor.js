@@ -70,7 +70,7 @@ function pathToArr(pathExpr) {
  * @param  {object} iterator an iterator object
  * @return {array}          all output of the iterator
  */
-function collectFromIterator(iterator) {
+function collectAll(iterator) {
 
   iterator.open();
 
@@ -913,8 +913,8 @@ FullJoinOperator.prototype.open = function() {
   this.result = [];
   this.pos = 0;
 
-  var lhsBuff = collectFromIterator(makeFromIterator(this.envir, this.clause.lhs));
-  var rhsBuff = collectFromIterator(makeFromIterator(this.envir, this.clause.rhs));
+  var lhsBuff = collectAll(makeFromIterator(this.envir, this.clause.lhs));
+  var rhsBuff = collectAll(makeFromIterator(this.envir, this.clause.rhs));
 
   let leftincluded = Array(lhsBuff.length).fill(false);
   let rightincluded = Array(rhsBuff.length).fill(false);
@@ -1144,7 +1144,7 @@ OrderbyOperator.prototype.constructor = AbstractOpertor;
 OrderbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  var unorderedArr = collectFromIterator(input);
+  var unorderedArr = collectAll(input);
 
   var orderby_clause = this.clause;
   var environment = this.envir;
@@ -1539,7 +1539,7 @@ SFWRootIterator.prototype.close = function() {
  */
 function sfwQuery(database, query) {
 
-  var result = collectFromIterator(new SFWRootIterator(database, query));
+  var result = collectAll(new SFWRootIterator(database, query));
 
   if (query.select_clause.selectType === 1) {
     return result[0];
@@ -1559,3 +1559,5 @@ function evalQuery(db, query) {
   return evalExprQuery(query, db);
     
 }
+
+exports.evalQuery = evalQuery;
