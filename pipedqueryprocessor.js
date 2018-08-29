@@ -908,7 +908,7 @@ RightJoinOperator.prototype.next = function() {
       }
 
       this.lhsIter = makeFromIterator(
-        Object.assign({}, this.rhsTuple.value, this.envir), this.clause.lhs);
+        Object.assign({}, this.envir, this.rhsTuple.value), this.clause.lhs);
       this.lhsIter.open();
 
       this.lhsTuple = this.lhsIter.next();
@@ -1475,7 +1475,7 @@ SelectAttrOperator.prototype.open = function() {
 
   while (!currItem.done) {
     let attrName = 
-      evalExprQuery(this.clause.selectAttrName, Object.assign({}, currItem.value, this.envir));
+      evalExprQuery(this.clause.selectAttrName, Object.assign({}, this.envir, currItem.value));
 
     if(typeof(attrName) !== 'string'){
       throw {
@@ -1484,7 +1484,7 @@ SelectAttrOperator.prototype.open = function() {
       };
     }
 
-    let attrVal = evalExprQuery(this.clause.selectAttrVal, Object.assign({}, currItem.value, this.envir));
+    let attrVal = evalExprQuery(this.clause.selectAttrVal, Object.assign({}, this.envir, currItem.value));
 
     this.result[attrName] = attrVal;
     currItem = this.input.next();
