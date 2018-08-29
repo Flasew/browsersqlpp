@@ -153,13 +153,13 @@
       var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
       whereArea.innerHTML = JSON.stringify(outputWhere);
 
-      var outputGroupBy = evalGroupBy(db, outputWhere, ast.groupby_clause);
+      var outputGroupBy = evalGroupby(db, outputWhere, ast.groupby_clause);
       groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
 
       var outputHaving = evalHaving(db, outputGroupBy, ast.having_clause);
       havingArea.innerHTML = JSON.stringify(outputHaving);
 
-      var outputOrderBy = evalOrderBy(db, outputHaving, ast.orderby_clause);
+      var outputOrderBy = evalOrderby(db, outputHaving, ast.orderby_clause);
       orderbyArea.innerHTML = JSON.stringify(outputOrderBy);
 
       var outputOffset = evalOffset(db, outputOrderBy, ast.offset_clause);

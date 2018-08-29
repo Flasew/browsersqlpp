@@ -6,21 +6,24 @@ const antlr4 = require('../node_modules/antlr4/index');
 const SqlppLexer = require('../parser/SqlppLexer').SqlppLexer;
 const SqlppParser = require('../parser/SqlppParser').SqlppParser;
 const SqlppVisitor = require('../parser/CustomVisitor').CustomVisitor;
+
+var Multiset = require('../node_modules/mnemonist/multi-set');
 var hash = require('../node_modules/object-hash/dist/object_hash.js');
-var _ = require('../node_modules/underscore/underscore.js');
+var _ = require('../node_modules/lodash');
 var visitor = new SqlppVisitor();
 
 var rewire = require('../node_modules/rewire')
 var p = rewire('../pipedqueryprocessor.js')
 var r = rewire('../queryprocessor.js')
 
-function assertEquals(expected, actual) {
+function assertEquals(expected, actual, arrIgnoreOrder=true) {
 
   var resultStackLine = new Error().stack.split('\n')[2].trim();
   var funcName = resultStackLine.split(' ')[1];
   var line = resultStackLine.split(':').reverse()[1];
 
-  if (_.isEqual(expected, actual))
+  if ((arrIgnoreOrder && _.isEqual(Multiset.from(expected), Multiset.from(actual)))
+    || (!arrIgnoreOrder && _.isEqual(expected, actual)))
     console.log('\x1b[32m%s\x1b[0m', 'Test ' + funcName + ' passed at line ' + line);
   else {
     console.log('\x1b[31m%s\x1b[0m', 'Test ' + funcName + ' FAILED at line ' + line);
@@ -66,9 +69,9 @@ const RSTDB = {
     {c: 8, d: 7}
   ],
   T: [
-    {e: "1st", f: 1},
-    {e: "2nd", f: 2},
-    {e: "3rd", f: 3}
+    {e: [1, 2], f: 1},
+    {e: [], f: 3},
+    {e: [3, 4], f: 2}
   ]
 };
 
@@ -159,7 +162,7 @@ function testCartesian() {
     {r: {a: 2, b: 5}, s: {c: 8, d: 7}} 
   ];
 
-  var resultPiped = collectFromIterator(makeFromIterator(RSTDB, ast));
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
   assertEquals(expected, resultPiped);
 
   var resultReg = evalFrom(RSTDB, ast)
@@ -169,7 +172,7 @@ function testCartesian() {
   var parser = initParser('FROM R as r INNER S as s');
   var ast = visitor.visit(parser.from_clause());
 
-  var resultPiped = collectFromIterator(makeFromIterator(RSTDB, ast));
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
   assertEquals(expected, resultPiped);
 
   var resultReg = evalFrom(RSTDB, ast)
@@ -191,7 +194,7 @@ function testCartesian() {
     {x: {r: [0.7, 1.4], n: 'co2'}, y: 1.4},
   ];
 
-  var resultPiped = collectFromIterator(makeFromIterator(SENSORDB, ast));
+  var resultPiped = collectAll(makeFromIterator(SENSORDB, ast));
   assertEquals(expected, resultPiped);
 
   var resultReg = evalFrom(SENSORDB, ast)
@@ -221,11 +224,76 @@ function testCartesian() {
 }
 
 function testInnerJoin() {
+  var parser = initParser('FROM R AS r INNER JOIN S AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}},
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
 
 }
 
 function testLeftJoin() {
+  var parser = initParser('FROM R AS r LEFT JOIN S AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 1, b: 1}, s: null},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
 
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
+
+}
+
+function testLeftCorr() {
+
+  var parser = initParser('FROM R AS r LEFT CORRELATE (FROM S AS s WHERE r.a = s.c SELECT ELEMENT s) AS s');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 1, b: 1}, s: null},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
+
+
+  var parser = initParser('FROM OUTER FLATTEN (T AS t, t.e AS e)');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {t: {e: [1, 2], f: 1}, e: 1},
+    {t: {e: [1, 2], f: 1}, e: 2},
+    {t: {e: [3, 4], f: 2}, e: 3},
+    {t: {e: [3, 4], f: 2}, e: 4},
+    {t: {e: [], f: 3}, e: null}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
 }
 
 function testRightJoin() {
@@ -237,7 +305,7 @@ function testFullJoin() {
 }
 
 // where clause
-var ExpressionIterator = p.__get__('ExpressionIterator');
+var FilterOperator = p.__get__('FilterOperator');
 var evalWhere = r.__get__('evalWhere');
 
 function testWhere() {
@@ -305,6 +373,7 @@ testFromRangePair();
 testCartesian();
 testInnerJoin();
 testLeftJoin();
+testLeftCorr();
 testRightJoin();
 testFullJoin();
 testWhere();

@@ -1,5 +1,6 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/underscore/underscore.js');
+var _ = require('./node_modules/lodash');
+var util = require('./node_modules/util');
 
 /*--------------------------- ENUM OF OPERATOR TYPES ---------------------*/
 /**
@@ -246,8 +247,10 @@ const EXPRESSIONS = {
 
   // nested SWF query
   sfw: function(query, db) {
-
+    // console.log('nestdb: ', util.inspect(db))
+    // console.log('nestq: ', util.inspect(query))
     var result = sfwQuery(db, query);
+    // console.log('nest: ', util.inspect(result))
     return result;
   }
 
@@ -402,6 +405,8 @@ RangeOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
+  // console.log('envir: ', this.envir);
+  // console.log('bfrom: ', this.bindFrom);
 
   if (!Array.isArray(this.bindFrom)) {
     this.bindFrom = [this.bindFrom];
@@ -527,10 +532,14 @@ CartesianOperator.prototype.open = function() {
   this.lhsIter.open();
   this.lhsTuple = undefined;
   this.rhsTuple = DONE_ELEMENT;
+
+  this.finished = false;
 }
 
 CartesianOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
+
+  if (this.finished) return DONE_ELEMENT;
 
   while (this.rhsTuple.done === true) {
 
@@ -540,12 +549,13 @@ CartesianOperator.prototype.next = function() {
     this.lhsTuple = this.lhsIter.next();
 
     if (this.lhsTuple.done) {
+      this.finished = true;
       this.lhsIter.close();
       return DONE_ELEMENT;
     }
 
     this.rhsIter = makeFromIterator(
-      Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+      Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
     this.rhsIter.open();
 
     this.rhsTuple = this.rhsIter.next();
@@ -589,10 +599,14 @@ InnerJoinOperator.prototype.open = function() {
   this.lhsIter.open();
   this.lhsTuple = undefined;
   this.rhsTuple = DONE_ELEMENT;
+
+  this.finished = false;
 }
 
 InnerJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
+
+  if (this.finished) return DONE_ELEMENT;
 
   var currValue;
   do {
@@ -603,13 +617,14 @@ InnerJoinOperator.prototype.next = function() {
 
       this.lhsTuple = this.lhsIter.next();
 
-      if (this.lhsTuple.done === true) {
+      if (this.lhsTuple.done) {
+        this.finished = true;
         this.lhsIter.close();
         return DONE_ELEMENT;
       }
 
       this.rhsIter = makeFromIterator(
-        Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+        Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
       this.rhsIter.open();
 
       this.rhsTuple = this.rhsIter.next();
@@ -659,10 +674,13 @@ LeftJoinOperator.prototype.open = function() {
   this.rhsTuple = DONE_ELEMENT;
 
   this.matched = true;
+  this.finished = false;
 }
 
 LeftJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
+
+  if (this.finished) return DONE_ELEMENT;
 
   var currValue;
   var unmatchedReturn = false;
@@ -670,7 +688,7 @@ LeftJoinOperator.prototype.next = function() {
   do {
     // check if RHS is empty. if so, advance LHS to match the 
     // next tuple. If LHS is also empty, we're done.
-    if (this.rhsTuple.done) {
+    while (this.rhsTuple.done) {
 
       if (this.rhsIter !== undefined) 
         this.rhsIter.close();
@@ -688,12 +706,13 @@ LeftJoinOperator.prototype.next = function() {
       this.matched = false;
 
       if (this.lhsTuple.done === true) {
+        this.finished = true;
         this.lhsIter.close();
         return DONE_ELEMENT;
       }
 
       this.rhsIter = makeFromIterator(
-        Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+        Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
       this.rhsIter.open();
 
       this.rhsTuple = this.rhsIter.next();
@@ -742,36 +761,60 @@ LeftCorrOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.lhsIter = makeFromIterator(this.envir, this.clause.lhs);
-  this.rhsIter = undefined;
 
   this.lhsIter.open();
-  this.lhsTuple = undefined;
-  this.rhsTuple = DONE_ELEMENT;
+  this.lhsTuple = this.lhsIter.next();
+  // console.log('lhsT: ', util.inspect(this.lhsTuple));
 
-  this.matched = true;
+  if (this.lhsTuple.done) {
+    this.lhsIter.close();
+    this.finished = true;
+    return;
+  }
+
+  this.finished = false;
+  this.rhsIter = makeFromIterator(
+    Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
+  this.rhsIter.open();
+  this.rhsTuple = this.rhsIter.next();
+  // console.log('rhs: ', util.inspect(this.clause.rhs));
+  // console.log('rhst: ', util.inspect(this.rhsTuple));
+
+  this.matched = false;
 }
 
 LeftCorrOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  var currValue;
+  if (this.finished) return DONE_ELEMENT;
+
+  var unmatchedReturn = undefined;
 
   if (this.rhsTuple.done) {
 
-    if (this.rhsIter !== undefined) 
-      this.rhsIter.close();
+    this.rhsIter.close();
+
+    if (!this.matched) {
+      currValue = Object.assign({}, this.lhsTuple.value);
+      currValue[this.clause.rhs.bindTo] = null;
+      unmatchedReturn = {
+        value: currValue,
+        done: false
+      };
+    }
 
     // advance lhsTuple and rhsTuple to the first of each iterator
     this.lhsTuple = this.lhsIter.next();
     this.matched = false;
 
     if (this.lhsTuple.done) {
+      this.finished = true;
       this.lhsIter.close();
       return DONE_ELEMENT;
     }
 
     this.rhsIter = makeFromIterator(
-      Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+      Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
     this.rhsIter.open();
 
     this.rhsTuple = this.rhsIter.next();
@@ -780,16 +823,17 @@ LeftCorrOperator.prototype.next = function() {
     if (this.rhsTuple.done) {
       currValue = Object.assign({}, this.lhsTuple.value);
       currValue[this.clause.rhs.bindTo] = null;
+      this.matched = true;
       return {
         value: currValue,
         done: false
       };
     }
-
+    if (unmatchedReturn != undefined) return unmatchedReturn;
   }
 
   currValue = Object.assign({}, this.lhsTuple.value, this.rhsTuple.value);
-
+  this.matched = true;
   this.rhsTuple = this.rhsIter.next();
 
   return {
@@ -827,11 +871,13 @@ RightJoinOperator.prototype.open = function() {
   this.lhsTuple = DONE_ELEMENT;
 
   this.matched = true;
+  this.finished = false;
 }
 
 RightJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
+  if (this.finished) return DONE_ELEMENT;
   var currValue;
   var unmatchedReturn = false;
 
@@ -856,6 +902,7 @@ RightJoinOperator.prototype.next = function() {
       this.matched = false;
 
       if (this.rhsTuple.done) {
+        this.finisehd = true;
         this.rhsIter.close();
         return DONE_ELEMENT;
       }
@@ -981,7 +1028,7 @@ FullJoinOperator.prototype.close = function() {
  * Iterator for expression queries. For each tuple in the input iterator, 
  * evaluate clause and return.
  */
-function ExpressionIterator(envir, clause, input) {
+function FilterOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
@@ -989,29 +1036,34 @@ function ExpressionIterator(envir, clause, input) {
   return this;
 }
 
-ExpressionIterator.prototype = Object.create(AbstractOpertor.prototype);
-ExpressionIterator.prototype.constructor = AbstractOpertor;
+FilterOperator.prototype = Object.create(AbstractOpertor.prototype);
+FilterOperator.prototype.constructor = AbstractOpertor;
 
-ExpressionIterator.prototype.open = function() {
+FilterOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   this.input.open();
 }
 
-ExpressionIterator.prototype.next = function() {
+FilterOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  var result = this.input.next();
+  var result;
 
-  if (result.done) 
-    return DONE_ELEMENT;
-  else 
-    return {
-      value: evalExprQuery(this.clause, Object.assign({}, result.value, this.envir)),
-      done: false
-    }; 
+  do {
+    result = this.input.next();
+
+    if (result.done) 
+      return DONE_ELEMENT;
+
+  } while (!evalExprQuery(this.clause, Object.assign({}, this.envir, result.value)));
+
+  return {
+    value: result.value,
+    done: false
+  }; 
 }
 
-ExpressionIterator.prototype.close = function() {
+FilterOperator.prototype.close = function() {
   this.input.close();
   this.constructor.prototype.close.call(this);
 }
@@ -1381,11 +1433,15 @@ SelectElementOperator.prototype.next = function() {
 
   if (currItem.done) 
     return DONE_ELEMENT;
-  else 
+  else {
+    // console.log("expr: ", this.clause.selectExpr)
+    // console.log('assobj: ', Object.assign({}, this.envir))
+    // console.log('evalres: ', evalExprQuery(this.clause.selectExpr, Object.assign({}, this.envir, currItem.value)))
     return {
-      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, currItem.value, this.envir)),
+      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, this.envir, currItem.value)),
       done: false
     }; 
+  }
 }
 
 SelectElementOperator.prototype.close = function() {
@@ -1481,7 +1537,7 @@ SFWRootIterator.prototype.open = function() {
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
     prevIter = 
-      new ExpressionIterator(this.envir, this.query.where_clause, prevIter);
+      new FilterOperator(this.envir, this.query.where_clause, prevIter);
   }
 
   if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
@@ -1497,7 +1553,7 @@ SFWRootIterator.prototype.open = function() {
       };
     }
     prevIter = 
-      new ExpressionIterator(this.envir, this.query.having_clause, prevIter);
+      new FilterOperator(this.envir, this.query.having_clause, prevIter);
   }
 
   if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {

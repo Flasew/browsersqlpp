@@ -1,5 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/underscore/underscore.js');
+var _ = require('./node_modules/lodash');
 
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
@@ -260,7 +260,7 @@ function sfwQuery(db, query) {
     prevOutput = evalWhere(db, prevOutput, query.where_clause);
 
   if (query.groupby_clause !== null && query.groupby_clause !== undefined) 
-    prevOutput = evalGroupBy(db, prevOutput, query.groupby_clause);
+    prevOutput = evalGroupby(db, prevOutput, query.groupby_clause);
   
   if (query.having_clause !== null && query.having_clause !== undefined) {
     if (query.groupby_clause === null || query.groupby_clause === undefined) {
@@ -273,7 +273,7 @@ function sfwQuery(db, query) {
   }
 
   if (query.orderby_clause !== null && query.orderby_clause !== undefined) 
-    prevOutput = evalOrderBy(db, prevOutput, query.orderby_clause);
+    prevOutput = evalOrderby(db, prevOutput, query.orderby_clause);
   
   if (query.offset_clause !== null && query.offset_clause !== undefined) 
     prevOutput = evalOffset(db, prevOutput, query.offset_clause);
@@ -313,7 +313,7 @@ function evalWhere(envir, prevBindOutput, whereClause) {
   var currBind = [];
 
   for (let item of prevBindOutput) {
-    if (evalExprQuery(whereClause, Object.assign({}, item, envir))) {
+    if (evalExprQuery(whereClause, Object.assign({}, envir, item))) {
       currBind.push(item);
     }
   }
@@ -336,7 +336,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
       var result = [];
 
       for(let item of prevBindOutput) {
-        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, item, envir)));
+        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, envir, item)));
       }
 
       return result;
@@ -347,7 +347,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
       var result = {};
 
       for(let item of prevBindOutput) {
-        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, item, envir));
+        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, envir, item));
 
         if(typeof(attrName) !== 'string'){
           throw {
@@ -356,7 +356,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
           };
         }
 
-        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, item, envir));
+        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, envir, item));
 
         result[attrName] = attrVal;
       }
@@ -500,7 +500,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
       for (let item of bindTuple) {
 
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir, item), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
@@ -518,7 +518,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
       for (let item of bindTuple) {
 
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir, item), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
@@ -544,7 +544,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
       for (let i = 0; i < bindTuple.length; i++) {
 
         let item = bindTuple[i];
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir, item), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
@@ -666,7 +666,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
     expr:
     as:
   }, ...]*/
-function evalGroupBy(envir, prevBindOutput, groupbyClause) {
+function evalGroupby(envir, prevBindOutput, groupbyClause) {
 
   if(groupbyClause === undefined || groupbyClause === null){
     return prevBindOutput;
@@ -747,7 +747,7 @@ function evalHaving(envir, prevBindOutput, havingClause) {
   var currBind = [];
 
   for (let item of prevBindOutput) {
-    if (evalExprQuery(havingClause, Object.assign({}, item, envir))) {
+    if (evalExprQuery(havingClause, Object.assign({}, envir, item))) {
       currBind.push(item);
     }
   }
@@ -759,7 +759,7 @@ function evalHaving(envir, prevBindOutput, havingClause) {
 //   expr: 
 //   asc: 
 // }, ...]
-function evalOrderBy(envir, prevBindOutput, orderbyClause) {
+function evalOrderby(envir, prevBindOutput, orderbyClause) {
 
   if(orderbyClause === undefined || orderbyClause === null){
     return prevBindOutput;
@@ -771,8 +771,8 @@ console.log(orderbyClause);
     for (let condition of orderbyClause) {
 
       // case of equal: go to the next condition
-      let t1res = evalExprQuery(condition.expr, Object.assign({}, t1, envir));
-      let t2res = evalExprQuery(condition.expr, Object.assign({}, t2, envir));
+      let t1res = evalExprQuery(condition.expr, Object.assign({}, envir, t1));
+      let t2res = evalExprQuery(condition.expr, Object.assign({}, envir, t2));
 
       if (t1res === t2res) {
         continue;
