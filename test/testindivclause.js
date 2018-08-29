@@ -98,6 +98,19 @@ const READINGSDB = {
   max: 2
 };
 
+const XYZDB = {data: [
+  {x: 1,  y: 'o', z: 300},
+  {x: 2,  y: 'o', z: 100},
+  {x: 3,  y: 'o', z: 300},
+  {x: 4,  y: 'n', z: 400},
+  {x: 5,  y: 'n', z: 200},
+  {x: 6,  y: 'n', z: 400},
+  {x: 7,  y: 'm', z: 300},
+  {x: 8,  y: 'm', z: 100},
+  {x: 9,  y: 'm', z: 300},
+  {x: 10, y: 'l', z: 0},
+]};
+
 var collectAll = p.__get__('collectAll');
 
 // FROM clauses
@@ -409,12 +422,34 @@ function testFullJoin() {
   assertEquals(expected, resultReg);
 }
 
+// from now on, assume that the FROM_RANGE op works as expected.
+const AST_FROMDATA = visitor.visit(initParser('FROM data AS d').from_clause());
+const BOUND_FROMDATA = collectAll(makeFromIterator(XYZDB, AST_FROMDATA));
+
 // where clause
 var FilterOperator = p.__get__('FilterOperator');
 var evalWhere = r.__get__('evalWhere');
 
 function testWhere() {
 
+  var parser = initParser('WHERE d.x >= 5 AND d.y <> \'n\' OR d.z == 100');
+  var ast = visitor.visit(parser.where_clause());
+  var expected = [
+    {d: {x: 2,  y: 'o', z: 100}},
+    {d: {x: 7,  y: 'm', z: 300}},
+    {d: {x: 8,  y: 'm', z: 100}},
+    {d: {x: 9,  y: 'm', z: 300}},
+    {d: {x: 10, y: 'l', z: 0}}
+  ];
+
+  var fromIterator = makeFromIterator(XYZDB, AST_FROMDATA);
+  var resultPiped = collectAll(new FilterOperator(XYZDB, ast, fromIterator));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalWhere(RSTDB, BOUND_FROMDATA, ast);
+  assertEquals(expected, resultReg);
+
+  // could add more
 }
 
 // group by clause 
