@@ -72,7 +72,15 @@ const RSTDB = {
     {e: [1, 2], f: 1},
     {e: [], f: 3},
     {e: [3, 4], f: 2}
-  ]
+  ],
+  U: [
+    {a: 2, b: 2},
+    {a: 2, b: 5}
+  ], 
+  V: [
+    {c: 2, d: 2}, 
+    {c: 2, d: 1}
+  ],
 };
 
 const READINGSDB = {
@@ -178,6 +186,9 @@ function testCartesian() {
   var resultReg = evalFrom(RSTDB, ast)
   assertEquals(expected, resultReg);
 
+}
+
+function testInnerFlat() {
   // inner flatten
   var parser = initParser('FROM INNER FLATTEN (named AS x, x.r AS y)');
   var ast = visitor.visit(parser.from_clause());
@@ -258,6 +269,21 @@ function testLeftJoin() {
   var resultReg = evalFrom(RSTDB, ast)
   assertEquals(expected, resultReg);
 
+  var parser = initParser('FROM U AS r LEFT JOIN V AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
+
 }
 
 function testLeftCorr() {
@@ -279,6 +305,25 @@ function testLeftCorr() {
   assertEquals(expected, resultReg);
 
 
+  var parser = initParser('FROM U AS r LEFT CORRELATE (FROM V AS s WHERE r.a = s.c SELECT ELEMENT s) AS s');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
+
+}
+
+function testOuterFlat() {
+
   var parser = initParser('FROM OUTER FLATTEN (T AS t, t.e AS e)');
   var ast = visitor.visit(parser.from_clause());
   var expected = [
@@ -297,11 +342,71 @@ function testLeftCorr() {
 }
 
 function testRightJoin() {
+  var parser = initParser('FROM R AS r RIGHT JOIN S AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: null, s: {c: 8, d: 7}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
 
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
+
+  var parser = initParser('FROM U AS r RIGHT JOIN V AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
 }
 
 function testFullJoin() {
 
+  var parser = initParser('FROM R AS r FULL JOIN S AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: null, s: {c: 8, d: 7}},
+    {r: {a: 1, b: 1}, s: null},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
+
+  var parser = initParser('FROM U AS r FULL JOIN V AS s ON r.a = s.c');
+  var ast = visitor.visit(parser.from_clause());
+  var expected = [
+    {r: {a: 2, b: 2}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 2}, s: {c: 2, d: 1}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 2}},
+    {r: {a: 2, b: 5}, s: {c: 2, d: 1}}
+  ];
+
+  var resultPiped = collectAll(makeFromIterator(RSTDB, ast));
+  assertEquals(expected, resultPiped);
+
+  var resultReg = evalFrom(RSTDB, ast)
+  assertEquals(expected, resultReg);
 }
 
 // where clause
@@ -371,9 +476,11 @@ function testSelectSQL() {
 testFromRange();
 testFromRangePair();
 testCartesian();
+testInnerFlat();
 testInnerJoin();
 testLeftJoin();
 testLeftCorr();
+testOuterFlat();
 testRightJoin();
 testFullJoin();
 testWhere();

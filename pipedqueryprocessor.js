@@ -312,7 +312,7 @@ AbstractOpertor.prototype.open = function() {
   if (this.isOpen)
     throw {
       name: "InteratorAlreadyOpen",
-      message: "This iterator is already open."
+      message: this.name + ": This iterator is already open."
     };
   this.isOpen = true;
 }
@@ -321,7 +321,7 @@ AbstractOpertor.prototype.next = function() {
   if (!this.isOpen)
     throw {
       name: "IteratorNotOpen",
-      message: "This iterator is not opened before next was called."
+      message: this.name + ": This iterator is not opened before next was called."
     };
 
 }
@@ -330,7 +330,7 @@ AbstractOpertor.prototype.close = function() {
   if (!this.isOpen)
     throw {
       name: "IteratorNotOpen",
-      message: "This iterator is not opened before close was called."
+      message: this.name + ": This iterator is not opened before close was called."
     };
   this.isOpen = false;
 }
@@ -400,6 +400,7 @@ function RangeOperator(envir, clause) {
 
 RangeOperator.prototype = Object.create(AbstractOpertor.prototype);
 RangeOperator.prototype.constructor = AbstractOpertor;
+RangeOperator.prototype.name = 'RangeOperator';
 
 RangeOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -459,6 +460,7 @@ function RangePairOperator(envir, clause) {
 
 RangePairOperator.prototype = Object.create(AbstractOpertor.prototype);
 RangePairOperator.prototype.constructor = AbstractOpertor;
+RangePairOperator.prototype.name = 'RangePairOperator';
 
 RangePairOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -522,6 +524,7 @@ function CartesianOperator(envir, clause) {
 
 CartesianOperator.prototype = Object.create(AbstractOpertor.prototype);
 CartesianOperator.prototype.constructor = AbstractOpertor;
+CartesianOperator.prototype.name = 'CartesianOperator';
 
 CartesianOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -589,6 +592,7 @@ function InnerJoinOperator(envir, clause) {
 
 InnerJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 InnerJoinOperator.prototype.constructor = AbstractOpertor;
+InnerJoinOperator.prototype.name = 'InnerJoinOperator';
 
 InnerJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -662,6 +666,7 @@ function LeftJoinOperator(envir, clause) {
 
 LeftJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 LeftJoinOperator.prototype.constructor = AbstractOpertor;
+LeftJoinOperator.prototype.name = 'LeftJoinOperator';
 
 LeftJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -708,7 +713,7 @@ LeftJoinOperator.prototype.next = function() {
       if (this.lhsTuple.done === true) {
         this.finished = true;
         this.lhsIter.close();
-        return DONE_ELEMENT;
+        return unmatchedReturn ? {value: currValue, done: false} : DONE_ELEMENT;
       }
 
       this.rhsIter = makeFromIterator(
@@ -756,6 +761,7 @@ function LeftCorrOperator(envir, clause) {
 
 LeftCorrOperator.prototype = Object.create(AbstractOpertor.prototype);
 LeftCorrOperator.prototype.constructor = AbstractOpertor;
+LeftCorrOperator.prototype.name = 'LeftCorrOperator';
 
 LeftCorrOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -859,6 +865,7 @@ function RightJoinOperator(envir, clause) {
 
 RightJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 RightJoinOperator.prototype.constructor = AbstractOpertor;
+RightJoinOperator.prototype.name = 'RightJoinOperator';
 
 RightJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -878,19 +885,20 @@ RightJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
   if (this.finished) return DONE_ELEMENT;
+
   var currValue;
   var unmatchedReturn = false;
 
   do {
-    // check if RHS is empty. if so, advance LHS to match the 
-    // next tuple. If LHS is also empty, we're done.
-    if (this.lhsTuple.done === true) {
+    // check if lhs is empty. if so, advance rhs to match the 
+    // next tuple. If rhs is also empty, we're done.
+    while (this.lhsTuple.done) {
 
       if (this.lhsIter !== undefined) 
         this.lhsIter.close();
 
-      // if no match for the LHS variable was found, 
-      // add a null as the RHS bindto result.
+      // if no match for the rhs variable was found, 
+      // add a null as the lhs bindto result.
       if (!this.matched) {
         currValue = Object.assign({}, this.rhsTuple.value);
         currValue[this.clause.lhs.bindTo] = null;
@@ -901,10 +909,10 @@ RightJoinOperator.prototype.next = function() {
       this.rhsTuple = this.rhsIter.next();
       this.matched = false;
 
-      if (this.rhsTuple.done) {
-        this.finisehd = true;
+      if (this.rhsTuple.done === true) {
+        this.finished = true;
         this.rhsIter.close();
-        return DONE_ELEMENT;
+        return unmatchedReturn ? {value: currValue, done: false} : DONE_ELEMENT;
       }
 
       this.lhsIter = makeFromIterator(
@@ -953,6 +961,7 @@ function FullJoinOperator(envir, clause) {
 
 FullJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 FullJoinOperator.prototype.constructor = AbstractOpertor;
+FullJoinOperator.prototype.name = 'FullJoinOperator';
 
 FullJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1008,9 +1017,8 @@ FullJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
   if (this.pos < this.result.length) {
-    this.pos++;
     return  {
-      value: this.result[this.pos],
+      value: this.result[this.pos++],
       done: false
     };
   }
@@ -1038,6 +1046,7 @@ function FilterOperator(envir, clause, input) {
 
 FilterOperator.prototype = Object.create(AbstractOpertor.prototype);
 FilterOperator.prototype.constructor = AbstractOpertor;
+FilterOperator.prototype.name = 'FilterOperator';
 
 FilterOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1083,6 +1092,7 @@ function GroupbyOperator(envir, clause, input) {
 
 GroupbyOperator.prototype = Object.create(AbstractOpertor.prototype);
 GroupbyOperator.prototype.constructor = AbstractOpertor;
+GroupbyOperator.prototype.name = 'GroupbyOperator';
 
 GroupbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1192,6 +1202,7 @@ function OrderbyOperator(envir, clause, input) {
 
 OrderbyOperator.prototype = Object.create(AbstractOpertor.prototype);
 OrderbyOperator.prototype.constructor = AbstractOpertor;
+OrderbyOperator.prototype.name = 'OrderbyOperator';
 
 OrderbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1262,6 +1273,7 @@ function OffsetOperator(envir, clause, input) {
 
 OffsetOperator.prototype = Object.create(AbstractOpertor.prototype);
 OffsetOperator.prototype.constructor = AbstractOpertor;
+OffsetOperator.prototype.name = 'OffsetOperator';
 
 OffsetOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1322,6 +1334,7 @@ function LimitOperator(envir, clause, input) {
 
 LimitOperator.prototype = Object.create(AbstractOpertor.prototype);
 LimitOperator.prototype.constructor = AbstractOpertor;
+LimitOperator.prototype.name = 'LimitOperator';
 
 LimitOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1390,6 +1403,7 @@ function SelectElementOperator(envir, clause, input) {
 
 SelectElementOperator.prototype = Object.create(AbstractOpertor.prototype);
 SelectElementOperator.prototype.constructor = AbstractOpertor;
+SelectElementOperator.prototype.name = 'SelectElementOperator';
 
 SelectElementOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1464,6 +1478,7 @@ function SelectAttrOperator(envir, clause, input) {
 
 SelectAttrOperator.prototype = Object.create(AbstractOpertor.prototype);
 SelectAttrOperator.prototype.constructor = AbstractOpertor;
+SelectAttrOperator.prototype.name = 'SelectAttrOperator';
 
 SelectAttrOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1529,6 +1544,7 @@ function SFWRootIterator(envir, query) {
 
 SFWRootIterator.prototype = Object.create(AbstractOpertor.prototype);
 SFWRootIterator.prototype.constructor = AbstractOpertor;
+SFWRootIterator.prototype.name = 'SFWRootIterator';
 
 SFWRootIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
