@@ -28,6 +28,10 @@ function assertEquals(expected, actual) {
 
 }
 
+function printSummary() {
+  console.log(passed + '/' + totalTest + ' tests passed.');
+}
+
 function initParser(input) {
   var chars = new antlr4.InputStream(input);
   var lexer = new SqlppLexer(chars);
@@ -852,4 +856,4 @@ testSF();
 testSFW();
 testSFWGH();
 
-
+printSummary();

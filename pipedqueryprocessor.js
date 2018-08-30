@@ -1207,7 +1207,7 @@ OrderbyOperator.prototype.name = 'OrderbyOperator';
 OrderbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  var unorderedArr = collectAll(input);
+  var unorderedArr = collectAll(this.input);
 
   var orderby_clause = this.clause;
   var environment = this.envir;
@@ -1284,10 +1284,10 @@ OffsetOperator.prototype.open = function() {
   var offset = evalExprQuery(this.clause, this.envir);
   var skipped = 0;
 
-  while(skipped < offset){
+  while (skipped < offset){
     var currItem = this.input.next();
 
-    if (!currItem.done) {
+    if (currItem.done) {
       this.finished = true;
       break;
     }
@@ -1299,18 +1299,17 @@ OffsetOperator.prototype.open = function() {
 OffsetOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.finished)
+  if (this.finished)
     return DONE_ELEMENT;
 
   var currItem = this.input.next();
 
-  if(currItem.done)
+  if(currItem.done) {
+    this.finished = true;
     return DONE_ELEMENT;
+  }
 
-  return {
-    value: currItem.value,
-    done: false
-  };
+  return currItem;
 
 }
 

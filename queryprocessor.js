@@ -333,8 +333,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
 
     // SELECT ELEMENT ...
     case SEL_TYPES.ELEMENT: {
-      var result = [];
-
+      var result = []; 
       for(let item of prevBindOutput) {
         result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, envir, item)));
       }
@@ -403,7 +402,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
         elementReconstruct.selectExpr.param.push(newObj);
       }
 
-      var result = evalSelectNoAggr(envir, prevBindOutput, elementReconstruct);
+      var result = evalSelect(envir, prevBindOutput, elementReconstruct);
 
       return result;
     }
@@ -767,7 +766,7 @@ function evalOrderby(envir, prevBindOutput, orderbyClause) {
 
   // construct the comparison function. 
   var comp = function(t1, t2) {
-console.log(orderbyClause);
+  // console.log(orderbyClause);
     for (let condition of orderbyClause) {
 
       // case of equal: go to the next condition
@@ -791,6 +790,8 @@ console.log(orderbyClause);
 }
 
 function evalOffset(envir, prevBindOutput, offsetClause){
+
+  var prevBindOutput = Array.from(prevBindOutput);
   if(offsetClause === undefined || offsetClause === null){
     return prevBindOutput;
   }
