@@ -1,5 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/underscore/underscore.js');
+var _ = require('./node_modules/lodash');
 
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
@@ -260,7 +260,7 @@ function sfwQuery(db, query) {
     prevOutput = evalWhere(db, prevOutput, query.where_clause);
 
   if (query.groupby_clause !== null && query.groupby_clause !== undefined) 
-    prevOutput = evalGroupBy(db, prevOutput, query.groupby_clause);
+    prevOutput = evalGroupby(db, prevOutput, query.groupby_clause);
   
   if (query.having_clause !== null && query.having_clause !== undefined) {
     if (query.groupby_clause === null || query.groupby_clause === undefined) {
@@ -273,7 +273,7 @@ function sfwQuery(db, query) {
   }
 
   if (query.orderby_clause !== null && query.orderby_clause !== undefined) 
-    prevOutput = evalOrderBy(db, prevOutput, query.orderby_clause);
+    prevOutput = evalOrderby(db, prevOutput, query.orderby_clause);
   
   if (query.offset_clause !== null && query.offset_clause !== undefined) 
     prevOutput = evalOffset(db, prevOutput, query.offset_clause);
@@ -313,7 +313,7 @@ function evalWhere(envir, prevBindOutput, whereClause) {
   var currBind = [];
 
   for (let item of prevBindOutput) {
-    if (evalExprQuery(whereClause, Object.assign({}, item, envir))) {
+    if (evalExprQuery(whereClause, Object.assign({}, envir, item))) {
       currBind.push(item);
     }
   }
@@ -333,10 +333,9 @@ function evalSelect(envir, prevBindOutput, selectClause) {
 
     // SELECT ELEMENT ...
     case SEL_TYPES.ELEMENT: {
-      var result = [];
-
+      var result = []; 
       for(let item of prevBindOutput) {
-        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, item, envir)));
+        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, envir, item)));
       }
 
       return result;
@@ -347,7 +346,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
       var result = {};
 
       for(let item of prevBindOutput) {
-        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, item, envir));
+        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, envir, item));
 
         if(typeof(attrName) !== 'string'){
           throw {
@@ -356,7 +355,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
           };
         }
 
-        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, item, envir));
+        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, envir, item));
 
         result[attrName] = attrVal;
       }
@@ -403,7 +402,7 @@ function evalSelect(envir, prevBindOutput, selectClause) {
         elementReconstruct.selectExpr.param.push(newObj);
       }
 
-      var result = evalSelectNoAggr(envir, prevBindOutput, elementReconstruct);
+      var result = evalSelect(envir, prevBindOutput, elementReconstruct);
 
       return result;
     }
@@ -500,7 +499,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
       for (let item of bindTuple) {
 
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir, item), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
@@ -518,7 +517,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
 
       for (let item of bindTuple) {
 
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir, item), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
@@ -544,7 +543,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
       for (let i = 0; i < bindTuple.length; i++) {
 
         let item = bindTuple[i];
-        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, item, envir), [{}]);
+        let itemBindResult = evalFromItem(fromItem.rhs, Object.assign({}, envir, item), [{}]);
 
         for (let result of itemBindResult) {
           let newTuple = Object.assign({}, item, result);
@@ -666,7 +665,7 @@ function evalFromItem(fromItem, envir, bindTuple) {
     expr:
     as:
   }, ...]*/
-function evalGroupBy(envir, prevBindOutput, groupbyClause) {
+function evalGroupby(envir, prevBindOutput, groupbyClause) {
 
   if(groupbyClause === undefined || groupbyClause === null){
     return prevBindOutput;
@@ -747,7 +746,7 @@ function evalHaving(envir, prevBindOutput, havingClause) {
   var currBind = [];
 
   for (let item of prevBindOutput) {
-    if (evalExprQuery(havingClause, Object.assign({}, item, envir))) {
+    if (evalExprQuery(havingClause, Object.assign({}, envir, item))) {
       currBind.push(item);
     }
   }
@@ -759,7 +758,7 @@ function evalHaving(envir, prevBindOutput, havingClause) {
 //   expr: 
 //   asc: 
 // }, ...]
-function evalOrderBy(envir, prevBindOutput, orderbyClause) {
+function evalOrderby(envir, prevBindOutput, orderbyClause) {
 
   if(orderbyClause === undefined || orderbyClause === null){
     return prevBindOutput;
@@ -767,12 +766,12 @@ function evalOrderBy(envir, prevBindOutput, orderbyClause) {
 
   // construct the comparison function. 
   var comp = function(t1, t2) {
-console.log(orderbyClause);
+  // console.log(orderbyClause);
     for (let condition of orderbyClause) {
 
       // case of equal: go to the next condition
-      let t1res = evalExprQuery(condition.expr, Object.assign({}, t1, envir));
-      let t2res = evalExprQuery(condition.expr, Object.assign({}, t2, envir));
+      let t1res = evalExprQuery(condition.expr, Object.assign({}, envir, t1));
+      let t2res = evalExprQuery(condition.expr, Object.assign({}, envir, t2));
 
       if (t1res === t2res) {
         continue;
@@ -791,6 +790,8 @@ console.log(orderbyClause);
 }
 
 function evalOffset(envir, prevBindOutput, offsetClause){
+
+  var prevBindOutput = Array.from(prevBindOutput);
   if(offsetClause === undefined || offsetClause === null){
     return prevBindOutput;
   }
@@ -867,79 +868,3 @@ function pathToArr(pathExpr) {
   return result;
 }
 
-
-var query = document.getElementById("QUERY");
-var envir = document.getElementById("DB");
-var button = document.getElementById("BUTTON");
-
-var fromArea = document.getElementById("FROM");
-var whereArea = document.getElementById("WHERE");
-var groupbyArea = document.getElementById("GROUPBY");
-var havingArea = document.getElementById("HAVING");
-var orderbyArea = document.getElementById("ORDERBY");
-var offsetArea = document.getElementById("OFFSET");
-var limitArea = document.getElementById("LIMIT");
-var selectArea = document.getElementById("SELECT");
-
-button.addEventListener("click", function(){
-  var input = query.value;
-  //console.log(input);
-  var chars = new antlr4.InputStream(input);
-  var lexer = new SqlppLexer(chars);
-  var tokens  = new antlr4.CommonTokenStream(lexer);
-  var parser = new SqlppParser(tokens);
-  parser.buildParseTrees = true;
-  var tree = parser.query();
-  console.log(tree);
-
-  var visitor = new SqlppVisitor();
-  var ast = visitor.visit(tree);
-  console.log(ast);
-
-  //var listener = new SqlppListener();
-  //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
-
-  var db = JSON.parse(envir.value);
-  //var clause = JSON.parse(tree.value);
-
-  var outputFrom = evalFrom(db, ast.from_clause);
-  fromArea.innerHTML = JSON.stringify(outputFrom);
-
-  var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
-  whereArea.innerHTML = JSON.stringify(outputWhere);
-
-  var outputGroupBy = evalGroupBy(db, outputWhere, ast.groupby_clause);
-  groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
-
-  var outputHaving = evalHaving(db, outputGroupBy, ast.having_clause);
-  havingArea.innerHTML = JSON.stringify(outputHaving);
-
-  var outputOrderBy = evalOrderBy(db, outputHaving, ast.orderby_clause);
-  orderbyArea.innerHTML = JSON.stringify(outputOrderBy);
-
-  var outputOffset = evalOffset(db, outputOrderBy, ast.offset_clause);
-  offsetArea.innerHTML = JSON.stringify(outputOffset);
-
-  var outputLimit = evalLimit(db, outputOffset, ast.limit_clause);
-  limitArea.innerHTML = JSON.stringify(outputLimit);
-
-  var outputSelect = evalSelect(db, outputLimit, ast.select_clause);
-  selectArea.innerHTML = JSON.stringify(outputSelect);
-
-  //console.log("Output of FROM Clause:");
-  //console.log(outputFrom);
-  //console.log("Output of WHERE Clause:");
-  //console.log(outputWhere);
-  //console.log("Output of GROUP BY Clause:");
-  //console.log(outputGroupBy);
-  //console.log("Output of HAVING Clause:");
-  //console.log(outputHaving);
-  //console.log("Output of ORDER BY Clause:");
-  //console.log(outputOrderBy);
-  //console.log("Output of OFFSET Clause:");
-  //console.log(outputOffset);
-  //console.log("Output of LIMIT Clause:");
-  //console.log(outputLimit);
-  //console.log("Output of SELECT Clause:");
-  //console.log(outputSelect);
-});

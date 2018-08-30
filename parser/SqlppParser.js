@@ -2299,23 +2299,23 @@ ExprBagContext.prototype.accept = function(visitor) {
 };
 
 
-function ExprNestSWFContext(parser, ctx) {
+function ExprNestSFWContext(parser, ctx) {
 	ExprContext.call(this, parser);
     ExprContext.prototype.copyFrom.call(this, ctx);
     return this;
 }
 
-ExprNestSWFContext.prototype = Object.create(ExprContext.prototype);
-ExprNestSWFContext.prototype.constructor = ExprNestSWFContext;
+ExprNestSFWContext.prototype = Object.create(ExprContext.prototype);
+ExprNestSFWContext.prototype.constructor = ExprNestSFWContext;
 
-SqlppParser.ExprNestSWFContext = ExprNestSWFContext;
+SqlppParser.ExprNestSFWContext = ExprNestSFWContext;
 
-ExprNestSWFContext.prototype.sfw_query = function() {
+ExprNestSFWContext.prototype.sfw_query = function() {
     return this.getTypedRuleContext(Sfw_queryContext,0);
 };
-ExprNestSWFContext.prototype.accept = function(visitor) {
+ExprNestSFWContext.prototype.accept = function(visitor) {
     if ( visitor instanceof SqlppVisitor ) {
-        return visitor.visitExprNestSWF(this);
+        return visitor.visitExprNestSFW(this);
     } else {
         return visitor.visitChildren(this);
     }
@@ -2376,6 +2376,8 @@ ExprAggrContext.prototype.accept = function(visitor) {
 
 function ExprArrAcsContext(parser, ctx) {
 	ExprContext.call(this, parser);
+    this.arr = null; // ExprContext;
+    this.pos = null; // ExprContext;
     ExprContext.prototype.copyFrom.call(this, ctx);
     return this;
 }
@@ -2692,7 +2694,7 @@ SqlppParser.prototype.expr = function(_p) {
         var la_ = this._interp.adaptivePredict(this._input,45,this._ctx);
         switch(la_) {
         case 1:
-            localctx = new ExprNestSWFContext(this, localctx);
+            localctx = new ExprNestSFWContext(this, localctx);
             this._ctx = localctx;
             _prevctx = localctx;
 
@@ -2701,7 +2703,7 @@ SqlppParser.prototype.expr = function(_p) {
             break;
 
         case 2:
-            localctx = new ExprNestSWFContext(this, localctx);
+            localctx = new ExprNestSFWContext(this, localctx);
             this._ctx = localctx;
             _prevctx = localctx;
             this.state = 245;
@@ -3080,6 +3082,7 @@ SqlppParser.prototype.expr = function(_p) {
 
                 case 9:
                     localctx = new ExprArrAcsContext(this, new ExprContext(this, _parentctx, _parentState));
+                    localctx.arr = _prevctx;
                     this.pushNewRecursionContext(localctx, _startState, SqlppParser.RULE_expr);
                     this.state = 348;
                     if (!( this.precpred(this._ctx, 15))) {
@@ -3088,7 +3091,7 @@ SqlppParser.prototype.expr = function(_p) {
                     this.state = 349;
                     this.match(SqlppParser.T__7);
                     this.state = 350;
-                    this.expr(0);
+                    localctx.pos = this.expr(0);
                     this.state = 351;
                     this.match(SqlppParser.T__8);
                     break;

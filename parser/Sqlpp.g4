@@ -60,12 +60,12 @@ offset_clause
   ;
 
 expr
-  : sfw_query                                                                       #ExprNestSWF    // Nested query
-  | '(' sfw_query ')'                                                               #ExprNestSWF
+  : sfw_query                                                                       #ExprNestSFW    // Nested query
+  | '(' sfw_query ')'                                                               #ExprNestSFW
   | value                                                                           #ExprVal        // literal values
   | variable                                                                        #ExprVari       // variable
   | expr '.' attr_name                                                              #ExprPath       // path
-  | expr '[' expr ']'                                                               #ExprArrAcs     // array access (TODO)
+  | arr=expr '[' pos=expr ']'                                                       #ExprArrAcs     // array access (TODO)
   | unary_op expr                                                                   #ExprUnary      // operators & function call
   | lhs=expr op='||'                         rhs=expr                               #ExprBinary
   | lhs=expr op=( '*' | '/' | '%' )          rhs=expr                               #ExprBinary
@@ -158,7 +158,7 @@ func_name
 
 attr_name
   : VAR_NAME
-  |keyword
+  | keyword
   ;
 
 /* Lexer rules */

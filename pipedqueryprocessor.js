@@ -1,5 +1,6 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/underscore/underscore.js');
+var _ = require('./node_modules/lodash');
+var util = require('./node_modules/util');
 
 /*--------------------------- ENUM OF OPERATOR TYPES ---------------------*/
 /**
@@ -70,7 +71,7 @@ function pathToArr(pathExpr) {
  * @param  {object} iterator an iterator object
  * @return {array}          all output of the iterator
  */
-function collectFromIterator(iterator) {
+function collectAll(iterator) {
 
   iterator.open();
 
@@ -246,8 +247,10 @@ const EXPRESSIONS = {
 
   // nested SWF query
   sfw: function(query, db) {
-
+    // console.log('nestdb: ', util.inspect(db))
+    // console.log('nestq: ', util.inspect(query))
     var result = sfwQuery(db, query);
+    // console.log('nest: ', util.inspect(result))
     return result;
   }
 
@@ -309,7 +312,7 @@ AbstractOpertor.prototype.open = function() {
   if (this.isOpen)
     throw {
       name: "InteratorAlreadyOpen",
-      message: "This iterator is already open."
+      message: this.name + ": This iterator is already open."
     };
   this.isOpen = true;
 }
@@ -318,7 +321,7 @@ AbstractOpertor.prototype.next = function() {
   if (!this.isOpen)
     throw {
       name: "IteratorNotOpen",
-      message: "This iterator is not opened before next was called."
+      message: this.name + ": This iterator is not opened before next was called."
     };
 
 }
@@ -327,7 +330,7 @@ AbstractOpertor.prototype.close = function() {
   if (!this.isOpen)
     throw {
       name: "IteratorNotOpen",
-      message: "This iterator is not opened before close was called."
+      message: this.name + ": This iterator is not opened before close was called."
     };
   this.isOpen = false;
 }
@@ -397,11 +400,14 @@ function RangeOperator(envir, clause) {
 
 RangeOperator.prototype = Object.create(AbstractOpertor.prototype);
 RangeOperator.prototype.constructor = AbstractOpertor;
+RangeOperator.prototype.name = 'RangeOperator';
 
 RangeOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.bindFrom = evalExprQuery(this.clause.bindFrom, this.envir);
+  // console.log('envir: ', this.envir);
+  // console.log('bfrom: ', this.bindFrom);
 
   if (!Array.isArray(this.bindFrom)) {
     this.bindFrom = [this.bindFrom];
@@ -454,6 +460,7 @@ function RangePairOperator(envir, clause) {
 
 RangePairOperator.prototype = Object.create(AbstractOpertor.prototype);
 RangePairOperator.prototype.constructor = AbstractOpertor;
+RangePairOperator.prototype.name = 'RangePairOperator';
 
 RangePairOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -517,6 +524,7 @@ function CartesianOperator(envir, clause) {
 
 CartesianOperator.prototype = Object.create(AbstractOpertor.prototype);
 CartesianOperator.prototype.constructor = AbstractOpertor;
+CartesianOperator.prototype.name = 'CartesianOperator';
 
 CartesianOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -527,10 +535,14 @@ CartesianOperator.prototype.open = function() {
   this.lhsIter.open();
   this.lhsTuple = undefined;
   this.rhsTuple = DONE_ELEMENT;
+
+  this.finished = false;
 }
 
 CartesianOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
+
+  if (this.finished) return DONE_ELEMENT;
 
   while (this.rhsTuple.done === true) {
 
@@ -540,12 +552,13 @@ CartesianOperator.prototype.next = function() {
     this.lhsTuple = this.lhsIter.next();
 
     if (this.lhsTuple.done) {
+      this.finished = true;
       this.lhsIter.close();
       return DONE_ELEMENT;
     }
 
     this.rhsIter = makeFromIterator(
-      Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+      Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
     this.rhsIter.open();
 
     this.rhsTuple = this.rhsIter.next();
@@ -579,6 +592,7 @@ function InnerJoinOperator(envir, clause) {
 
 InnerJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 InnerJoinOperator.prototype.constructor = AbstractOpertor;
+InnerJoinOperator.prototype.name = 'InnerJoinOperator';
 
 InnerJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -589,10 +603,14 @@ InnerJoinOperator.prototype.open = function() {
   this.lhsIter.open();
   this.lhsTuple = undefined;
   this.rhsTuple = DONE_ELEMENT;
+
+  this.finished = false;
 }
 
 InnerJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
+
+  if (this.finished) return DONE_ELEMENT;
 
   var currValue;
   do {
@@ -603,13 +621,14 @@ InnerJoinOperator.prototype.next = function() {
 
       this.lhsTuple = this.lhsIter.next();
 
-      if (this.lhsTuple.done === true) {
+      if (this.lhsTuple.done) {
+        this.finished = true;
         this.lhsIter.close();
         return DONE_ELEMENT;
       }
 
       this.rhsIter = makeFromIterator(
-        Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+        Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
       this.rhsIter.open();
 
       this.rhsTuple = this.rhsIter.next();
@@ -647,6 +666,7 @@ function LeftJoinOperator(envir, clause) {
 
 LeftJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 LeftJoinOperator.prototype.constructor = AbstractOpertor;
+LeftJoinOperator.prototype.name = 'LeftJoinOperator';
 
 LeftJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -659,10 +679,13 @@ LeftJoinOperator.prototype.open = function() {
   this.rhsTuple = DONE_ELEMENT;
 
   this.matched = true;
+  this.finished = false;
 }
 
 LeftJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
+
+  if (this.finished) return DONE_ELEMENT;
 
   var currValue;
   var unmatchedReturn = false;
@@ -670,7 +693,7 @@ LeftJoinOperator.prototype.next = function() {
   do {
     // check if RHS is empty. if so, advance LHS to match the 
     // next tuple. If LHS is also empty, we're done.
-    if (this.rhsTuple.done) {
+    while (this.rhsTuple.done) {
 
       if (this.rhsIter !== undefined) 
         this.rhsIter.close();
@@ -688,12 +711,13 @@ LeftJoinOperator.prototype.next = function() {
       this.matched = false;
 
       if (this.lhsTuple.done === true) {
+        this.finished = true;
         this.lhsIter.close();
-        return DONE_ELEMENT;
+        return unmatchedReturn ? {value: currValue, done: false} : DONE_ELEMENT;
       }
 
       this.rhsIter = makeFromIterator(
-        Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+        Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
       this.rhsIter.open();
 
       this.rhsTuple = this.rhsIter.next();
@@ -737,41 +761,66 @@ function LeftCorrOperator(envir, clause) {
 
 LeftCorrOperator.prototype = Object.create(AbstractOpertor.prototype);
 LeftCorrOperator.prototype.constructor = AbstractOpertor;
+LeftCorrOperator.prototype.name = 'LeftCorrOperator';
 
 LeftCorrOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
   this.lhsIter = makeFromIterator(this.envir, this.clause.lhs);
-  this.rhsIter = undefined;
 
   this.lhsIter.open();
-  this.lhsTuple = undefined;
-  this.rhsTuple = DONE_ELEMENT;
+  this.lhsTuple = this.lhsIter.next();
+  // console.log('lhsT: ', util.inspect(this.lhsTuple));
 
-  this.matched = true;
+  if (this.lhsTuple.done) {
+    this.lhsIter.close();
+    this.finished = true;
+    return;
+  }
+
+  this.finished = false;
+  this.rhsIter = makeFromIterator(
+    Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
+  this.rhsIter.open();
+  this.rhsTuple = this.rhsIter.next();
+  // console.log('rhs: ', util.inspect(this.clause.rhs));
+  // console.log('rhst: ', util.inspect(this.rhsTuple));
+
+  this.matched = false;
 }
 
 LeftCorrOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  var currValue;
+  if (this.finished) return DONE_ELEMENT;
+
+  var unmatchedReturn = undefined;
 
   if (this.rhsTuple.done) {
 
-    if (this.rhsIter !== undefined) 
-      this.rhsIter.close();
+    this.rhsIter.close();
+
+    if (!this.matched) {
+      currValue = Object.assign({}, this.lhsTuple.value);
+      currValue[this.clause.rhs.bindTo] = null;
+      unmatchedReturn = {
+        value: currValue,
+        done: false
+      };
+    }
 
     // advance lhsTuple and rhsTuple to the first of each iterator
     this.lhsTuple = this.lhsIter.next();
     this.matched = false;
 
     if (this.lhsTuple.done) {
+      this.finished = true;
       this.lhsIter.close();
       return DONE_ELEMENT;
     }
 
     this.rhsIter = makeFromIterator(
-      Object.assign({}, this.lhsTuple.value, this.envir), this.clause.rhs);
+      Object.assign({}, this.envir, this.lhsTuple.value), this.clause.rhs);
     this.rhsIter.open();
 
     this.rhsTuple = this.rhsIter.next();
@@ -780,16 +829,17 @@ LeftCorrOperator.prototype.next = function() {
     if (this.rhsTuple.done) {
       currValue = Object.assign({}, this.lhsTuple.value);
       currValue[this.clause.rhs.bindTo] = null;
+      this.matched = true;
       return {
         value: currValue,
         done: false
       };
     }
-
+    if (unmatchedReturn != undefined) return unmatchedReturn;
   }
 
   currValue = Object.assign({}, this.lhsTuple.value, this.rhsTuple.value);
-
+  this.matched = true;
   this.rhsTuple = this.rhsIter.next();
 
   return {
@@ -815,6 +865,7 @@ function RightJoinOperator(envir, clause) {
 
 RightJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 RightJoinOperator.prototype.constructor = AbstractOpertor;
+RightJoinOperator.prototype.name = 'RightJoinOperator';
 
 RightJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -827,24 +878,27 @@ RightJoinOperator.prototype.open = function() {
   this.lhsTuple = DONE_ELEMENT;
 
   this.matched = true;
+  this.finished = false;
 }
 
 RightJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
+  if (this.finished) return DONE_ELEMENT;
+
   var currValue;
   var unmatchedReturn = false;
 
   do {
-    // check if RHS is empty. if so, advance LHS to match the 
-    // next tuple. If LHS is also empty, we're done.
-    if (this.lhsTuple.done === true) {
+    // check if lhs is empty. if so, advance rhs to match the 
+    // next tuple. If rhs is also empty, we're done.
+    while (this.lhsTuple.done) {
 
       if (this.lhsIter !== undefined) 
         this.lhsIter.close();
 
-      // if no match for the LHS variable was found, 
-      // add a null as the RHS bindto result.
+      // if no match for the rhs variable was found, 
+      // add a null as the lhs bindto result.
       if (!this.matched) {
         currValue = Object.assign({}, this.rhsTuple.value);
         currValue[this.clause.lhs.bindTo] = null;
@@ -855,13 +909,14 @@ RightJoinOperator.prototype.next = function() {
       this.rhsTuple = this.rhsIter.next();
       this.matched = false;
 
-      if (this.rhsTuple.done) {
+      if (this.rhsTuple.done === true) {
+        this.finished = true;
         this.rhsIter.close();
-        return DONE_ELEMENT;
+        return unmatchedReturn ? {value: currValue, done: false} : DONE_ELEMENT;
       }
 
       this.lhsIter = makeFromIterator(
-        Object.assign({}, this.rhsTuple.value, this.envir), this.clause.lhs);
+        Object.assign({}, this.envir, this.rhsTuple.value), this.clause.lhs);
       this.lhsIter.open();
 
       this.lhsTuple = this.lhsIter.next();
@@ -906,6 +961,7 @@ function FullJoinOperator(envir, clause) {
 
 FullJoinOperator.prototype = Object.create(AbstractOpertor.prototype);
 FullJoinOperator.prototype.constructor = AbstractOpertor;
+FullJoinOperator.prototype.name = 'FullJoinOperator';
 
 FullJoinOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -913,8 +969,8 @@ FullJoinOperator.prototype.open = function() {
   this.result = [];
   this.pos = 0;
 
-  var lhsBuff = collectFromIterator(makeFromIterator(this.envir, this.clause.lhs));
-  var rhsBuff = collectFromIterator(makeFromIterator(this.envir, this.clause.rhs));
+  var lhsBuff = collectAll(makeFromIterator(this.envir, this.clause.lhs));
+  var rhsBuff = collectAll(makeFromIterator(this.envir, this.clause.rhs));
 
   let leftincluded = Array(lhsBuff.length).fill(false);
   let rightincluded = Array(rhsBuff.length).fill(false);
@@ -961,9 +1017,8 @@ FullJoinOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
   if (this.pos < this.result.length) {
-    this.pos++;
     return  {
-      value: this.result[this.pos],
+      value: this.result[this.pos++],
       done: false
     };
   }
@@ -981,7 +1036,7 @@ FullJoinOperator.prototype.close = function() {
  * Iterator for expression queries. For each tuple in the input iterator, 
  * evaluate clause and return.
  */
-function ExpressionIterator(envir, clause, input) {
+function FilterOperator(envir, clause, input) {
   this.clause = clause;
   this.envir = envir;
   this.input = input;
@@ -989,29 +1044,35 @@ function ExpressionIterator(envir, clause, input) {
   return this;
 }
 
-ExpressionIterator.prototype = Object.create(AbstractOpertor.prototype);
-ExpressionIterator.prototype.constructor = AbstractOpertor;
+FilterOperator.prototype = Object.create(AbstractOpertor.prototype);
+FilterOperator.prototype.constructor = AbstractOpertor;
+FilterOperator.prototype.name = 'FilterOperator';
 
-ExpressionIterator.prototype.open = function() {
+FilterOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
   this.input.open();
 }
 
-ExpressionIterator.prototype.next = function() {
+FilterOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  var result = this.input.next();
+  var result;
 
-  if (result.done) 
-    return DONE_ELEMENT;
-  else 
-    return {
-      value: evalExprQuery(this.clause, Object.assign({}, result.value, this.envir)),
-      done: false
-    }; 
+  do {
+    result = this.input.next();
+
+    if (result.done) 
+      return DONE_ELEMENT;
+
+  } while (!evalExprQuery(this.clause, Object.assign({}, this.envir, result.value)));
+
+  return {
+    value: result.value,
+    done: false
+  }; 
 }
 
-ExpressionIterator.prototype.close = function() {
+FilterOperator.prototype.close = function() {
   this.input.close();
   this.constructor.prototype.close.call(this);
 }
@@ -1031,6 +1092,7 @@ function GroupbyOperator(envir, clause, input) {
 
 GroupbyOperator.prototype = Object.create(AbstractOpertor.prototype);
 GroupbyOperator.prototype.constructor = AbstractOpertor;
+GroupbyOperator.prototype.name = 'GroupbyOperator';
 
 GroupbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1140,11 +1202,12 @@ function OrderbyOperator(envir, clause, input) {
 
 OrderbyOperator.prototype = Object.create(AbstractOpertor.prototype);
 OrderbyOperator.prototype.constructor = AbstractOpertor;
+OrderbyOperator.prototype.name = 'OrderbyOperator';
 
 OrderbyOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
 
-  var unorderedArr = collectFromIterator(input);
+  var unorderedArr = collectAll(this.input);
 
   var orderby_clause = this.clause;
   var environment = this.envir;
@@ -1210,6 +1273,7 @@ function OffsetOperator(envir, clause, input) {
 
 OffsetOperator.prototype = Object.create(AbstractOpertor.prototype);
 OffsetOperator.prototype.constructor = AbstractOpertor;
+OffsetOperator.prototype.name = 'OffsetOperator';
 
 OffsetOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1220,10 +1284,10 @@ OffsetOperator.prototype.open = function() {
   var offset = evalExprQuery(this.clause, this.envir);
   var skipped = 0;
 
-  while(skipped < offset){
+  while (skipped < offset){
     var currItem = this.input.next();
 
-    if (!currItem.done) {
+    if (currItem.done) {
       this.finished = true;
       break;
     }
@@ -1235,18 +1299,17 @@ OffsetOperator.prototype.open = function() {
 OffsetOperator.prototype.next = function() {
   this.constructor.prototype.next.call(this);
 
-  if(this.finished)
+  if (this.finished)
     return DONE_ELEMENT;
 
   var currItem = this.input.next();
 
-  if(currItem.done)
+  if(currItem.done) {
+    this.finished = true;
     return DONE_ELEMENT;
+  }
 
-  return {
-    value: currItem.value,
-    done: false
-  };
+  return currItem;
 
 }
 
@@ -1270,6 +1333,7 @@ function LimitOperator(envir, clause, input) {
 
 LimitOperator.prototype = Object.create(AbstractOpertor.prototype);
 LimitOperator.prototype.constructor = AbstractOpertor;
+LimitOperator.prototype.name = 'LimitOperator';
 
 LimitOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1338,6 +1402,7 @@ function SelectElementOperator(envir, clause, input) {
 
 SelectElementOperator.prototype = Object.create(AbstractOpertor.prototype);
 SelectElementOperator.prototype.constructor = AbstractOpertor;
+SelectElementOperator.prototype.name = 'SelectElementOperator';
 
 SelectElementOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1381,11 +1446,15 @@ SelectElementOperator.prototype.next = function() {
 
   if (currItem.done) 
     return DONE_ELEMENT;
-  else 
+  else {
+    // console.log("expr: ", this.clause.selectExpr)
+    // console.log('assobj: ', Object.assign({}, this.envir))
+    // console.log('evalres: ', evalExprQuery(this.clause.selectExpr, Object.assign({}, this.envir, currItem.value)))
     return {
-      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, currItem.value, this.envir)),
+      value: evalExprQuery(this.clause.selectExpr, Object.assign({}, this.envir, currItem.value)),
       done: false
     }; 
+  }
 }
 
 SelectElementOperator.prototype.close = function() {
@@ -1408,6 +1477,7 @@ function SelectAttrOperator(envir, clause, input) {
 
 SelectAttrOperator.prototype = Object.create(AbstractOpertor.prototype);
 SelectAttrOperator.prototype.constructor = AbstractOpertor;
+SelectAttrOperator.prototype.name = 'SelectAttrOperator';
 
 SelectAttrOperator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1419,7 +1489,7 @@ SelectAttrOperator.prototype.open = function() {
 
   while (!currItem.done) {
     let attrName = 
-      evalExprQuery(this.clause.selectAttrName, Object.assign({}, currItem.value, this.envir));
+      evalExprQuery(this.clause.selectAttrName, Object.assign({}, this.envir, currItem.value));
 
     if(typeof(attrName) !== 'string'){
       throw {
@@ -1428,7 +1498,7 @@ SelectAttrOperator.prototype.open = function() {
       };
     }
 
-    let attrVal = evalExprQuery(this.clause.selectAttrVal, Object.assign({}, currItem.value, this.envir));
+    let attrVal = evalExprQuery(this.clause.selectAttrVal, Object.assign({}, this.envir, currItem.value));
 
     this.result[attrName] = attrVal;
     currItem = this.input.next();
@@ -1473,6 +1543,7 @@ function SFWRootIterator(envir, query) {
 
 SFWRootIterator.prototype = Object.create(AbstractOpertor.prototype);
 SFWRootIterator.prototype.constructor = AbstractOpertor;
+SFWRootIterator.prototype.name = 'SFWRootIterator';
 
 SFWRootIterator.prototype.open = function() {
   this.constructor.prototype.open.call(this);
@@ -1481,7 +1552,7 @@ SFWRootIterator.prototype.open = function() {
 
   if (this.query.where_clause !== null && this.query.where_clause !== undefined) {
     prevIter = 
-      new ExpressionIterator(this.envir, this.query.where_clause, prevIter);
+      new FilterOperator(this.envir, this.query.where_clause, prevIter);
   }
 
   if (this.query.groupby_clause !== null && this.query.groupby_clause !== undefined) {
@@ -1497,7 +1568,7 @@ SFWRootIterator.prototype.open = function() {
       };
     }
     prevIter = 
-      new ExpressionIterator(this.envir, this.query.having_clause, prevIter);
+      new FilterOperator(this.envir, this.query.having_clause, prevIter);
   }
 
   if (this.query.orderby_clause !== null && this.query.orderby_clause !== undefined) {
@@ -1539,7 +1610,7 @@ SFWRootIterator.prototype.close = function() {
  */
 function sfwQuery(database, query) {
 
-  var result = collectFromIterator(new SFWRootIterator(database, query));
+  var result = collectAll(new SFWRootIterator(database, query));
 
   if (query.select_clause.selectType === 1) {
     return result[0];
@@ -1560,39 +1631,4 @@ function evalQuery(db, query) {
     
 }
 
-var query = document.getElementById("QUERY");
-var envir = document.getElementById("DB");
-var button = document.getElementById("BUTTON");
-
-var selectArea = document.getElementById("SELECT");
-
-button.addEventListener("click", function(){
-  selectArea.innerHTML = "";
-
-  var input = query.value;
-
-  var chars = new antlr4.InputStream(input);
-  var lexer = new SqlppLexer(chars);
-  var tokens  = new antlr4.CommonTokenStream(lexer);
-  var parser = new SqlppParser(tokens);
-  parser.buildParseTrees = true;
-  var tree = parser.query();
-
-  var visitor = new SqlppVisitor();
-  var ast = visitor.visit(tree);
-  console.log(ast);
-
-  var db = JSON.parse(envir.value);
-
-  var queryResult = sfwQuery(db, ast);
-
-  if(Array.isArray(queryResult)){
-    for(let i = 0; i < queryResult.length; i++){
-      selectArea.innerHTML = selectArea.innerHTML + "<tr><td>" + JSON.stringify(queryResult[i]) + "</td></tr>";
-    }
-  }
-  else{
-      selectArea.innerHTML = selectArea.innerHTML + "<tr><td>" + JSON.stringify(queryResult) + "</td></tr>";
-  }
-
-});
+exports.evalQuery = evalQuery;
