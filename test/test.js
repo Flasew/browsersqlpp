@@ -1,10 +1,16 @@
 const READINGDB = {
-  reading: { 
+  meters: { 
     co: [0.7, [0.5, 2]], 
     no2: ["repair"], 
     so2: [] 
   },
+  readings: [
+    {co: 2.2},
+    {co: 1.2, no2: [0.5, 2]},
+    {co: 1.8, no2: 0.7}
+  ],
   cl2: [1,3,5,7,9],
+  max: 2
 };
 
 const LASTREADING = {

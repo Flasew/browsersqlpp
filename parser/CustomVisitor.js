@@ -14,12 +14,12 @@ CustomVisitor.prototype.constructor = SqlppVisitor;
 // Visit a parse tree produced by SqlppParser#query.
 CustomVisitor.prototype.visitQuery = function(ctx) {
   if (ctx.expr() !== null) return this.visit(ctx.expr());
-  else                     return this.visit(ctx.swf_query());
+  else                     return this.visit(ctx.sfw_query());
 };
 
 
-// Visit a parse tree produced by SqlppParser#swf_query.
-CustomVisitor.prototype.visitSwf_query = function(ctx) {
+// Visit a parse tree produced by SqlppParser#sfw_query.
+CustomVisitor.prototype.visitSfw_query = function(ctx) {
   var result = {
     select_clause:  this.visit(ctx.select_clause()),
     from_clause:    this.visit(ctx.from_clause()),
@@ -30,14 +30,6 @@ CustomVisitor.prototype.visitSwf_query = function(ctx) {
     limit_clause:   ctx.limit_clause() === null ? null : this.visit(ctx.limit_clause()),
     offset_clause:  ctx.offset_clause() === null ? null : this.visit(ctx.offset_clause()),
   };
-
-  if (result.groupby_clause !== undefined) {
-    result.select_clause.aggrQuery = true;
-  } 
-  else {
-    result.select_clause.aggrQuery = false;
-  } 
-
   return result;
 };
 
@@ -83,9 +75,7 @@ CustomVisitor.prototype.visitSQLSel = function(ctx) {
 
     resultPos++;
   }
-  // console.log('sqlsel');
-  // console.log(ctx.expr());
-  // console.log(ctx.attr_name());
+
   return result;
 };
 
@@ -185,14 +175,16 @@ CustomVisitor.prototype.visitFromFlatten = function(ctx) {
 
   result.lhs = {
     opType: 0,
-    bindFrom: this.visit(ctx.lexpr()),
-    bindTo: ctx.lvar.text
+    bindFrom: this.visit(ctx.lexpr),
+    bindTo: ctx.lvar.getText(),
+    at: undefined
   };
 
   result.rhs = {
     opType: 0,
-    bindFrom: this.visit(ctx.rexpr()),
-    bindTo: ctx.rvar.text
+    bindFrom: this.visit(ctx.rexpr),
+    bindTo: ctx.rvar.getText(),
+    at: undefined
   };
 
   return result;
@@ -244,7 +236,13 @@ CustomVisitor.prototype.visitExprObj = function(ctx) {
 
 // TODO: Visit a parse tree produced by SqlppParser#ExprBag.  
 CustomVisitor.prototype.visitExprBag = function(ctx) { // TODO
-  return this.visitChildren(ctx);
+  var result = {func: 'bag', param: [], isExpr: true};
+
+  for (let i = 0; i < ctx.expr().length; i++) {
+    result.param[i] = this.visit(ctx.expr()[i]);
+  }
+
+  return result;
 };
 
 
@@ -287,11 +285,11 @@ CustomVisitor.prototype.visitExprBinary = function(ctx) {
 };
 
 
-// Visit a parse tree produced by SqlppParser#ExprNestSWF.
-CustomVisitor.prototype.visitExprNestSWF = function(ctx) {
+// Visit a parse tree produced by SqlppParser#ExprNestSFW.
+CustomVisitor.prototype.visitExprNestSFW = function(ctx) {
   return {
-    func: 'swf',
-    param: [this.visit(ctx.swf_query())],
+    func: 'sfw',
+    param: [this.visit(ctx.sfw_query())],
     isExpr: true
   };
 };
@@ -299,7 +297,25 @@ CustomVisitor.prototype.visitExprNestSWF = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprUnary.
 CustomVisitor.prototype.visitExprUnary = function(ctx) {
-  return this.visitChildren(ctx);
+  var result = {};
+
+  switch (ctx.unary_op().getText().toLowerCase()) {
+    case '+': result.func = 'id';  break;
+    case '-': result.func = 'neg'; break;
+    case '~': 
+    case 'not': result.func = 'not'; break;
+    default: throw {
+      name: 'InvalidUnaryOperator',
+      message: ctx.op.text + ' is not a valid unary operator'
+    };
+  }
+
+  result.param = [];
+  result.param[0] = this.visit(ctx.expr());
+
+  result.isExpr = true;
+
+  return result;
 };
 
 
@@ -318,7 +334,14 @@ CustomVisitor.prototype.visitExprFunc = function(ctx) {
 
 // TODO: Visit a parse tree produced by SqlppParser#ExprArrAcs.
 CustomVisitor.prototype.visitExprArrAcs = function(ctx) {
-  return this.visitChildren(ctx);
+  return {
+    func: 'arracs', 
+    param: [
+      this.visit(ctx.arr),
+      this.visit(ctx.pos)
+    ],
+    isExpr: true
+  };
 };
 
 
@@ -376,26 +399,7 @@ CustomVisitor.prototype.visitExprParan = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#unary_op.
 CustomVisitor.prototype.visitUnary_op = function(ctx) {
-  
-  var result = {};
-
-  switch (ctx.unary_op().getText().toLowerCase()) {
-    case '+': result.func = 'id';  break;
-    case '-': result.func = 'neg'; break;
-    case '~': 
-    case 'not': result.func = 'not'; break;
-    default: throw {
-      name: 'InvalidUnaryOperator',
-      message: ctx.op.text + ' is not a valid unary operator'
-    };
-  }
-
-  result.param = [];
-  result.param[0] = this.visit(ctx.expr());
-
-  result.isExpr = true;
-
-  return result;
+  return this.visitChildren(ctx);
 };
 
 // Visit a parse tree produced by SqlppParser#keyword.
@@ -452,9 +456,7 @@ CustomVisitor.prototype.visitGroupby_clause = function(ctx) {
 
     resultPos++;
   }
-  // console.log('sqlsel');
-  // console.log(ctx.expr());
-  // console.log(ctx.attr_name());
+
   return result;
 
 };
@@ -482,7 +484,7 @@ CustomVisitor.prototype.visitSetop_clause = function(ctx) {
   }
 
   result.all = ctx.K_ALL() !== null;
-  result.rhsQuery = this.visit(ctx.swf_query());
+  result.rhsQuery = this.visit(ctx.sfw_query());
 
   return result;
 
@@ -508,7 +510,7 @@ CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
 
     if (ctx.children[i] !== undefined) {
       let orderDefine = ctx.children[i].getText().toLowerCase();
-      console.log(orderDefine);
+      
       if(orderDefine === 'desc')
         result[resultPos].asc = false;
       else if(orderDefine !== "asc" && orderDefine !== ","){
@@ -521,9 +523,7 @@ CustomVisitor.prototype.visitOrderby_clause = function(ctx) {
 
     resultPos++;
   }
-  // console.log('sqlsel');
-  // console.log(ctx.expr());
-  // console.log(ctx.attr_name());
+
   return result;
 };
 
@@ -568,14 +568,8 @@ SqlppVisitor.prototype.visitExprAggr = function(ctx) {
   else {
     var exprResult = this.visit(ctx.expr());
 
-    if (exprResult.func !== 'swf') {
-
-
+    if (exprResult.func !== 'sfw') {
       result.param = [JSON.stringify(exprResult)];
-      //result.param[0].isExpr = undefined;
-      
-//console.log(result.param[0].isExpr);
-console.log(result.param[0])
       return result;
     }
     else{
