@@ -4,7 +4,7 @@
  * only those clause with significant visitor code will be tested.
  */
 
-const _ = require('../node_modules/underscore/underscore.js');
+const _ = require('../node_modules/lodash');
 const util = require('../node_modules/util')
 const antlr4 = require('../node_modules/antlr4/index');
 const SqlppLexer = require('../parser/SqlppLexer').SqlppLexer;
@@ -12,14 +12,21 @@ const SqlppParser = require('../parser/SqlppParser').SqlppParser;
 const SqlppVisitor = require('../parser/CustomVisitor').CustomVisitor;
 var visitor = new SqlppVisitor();
 
+var passed = 0;
+var totalTest = 0;
+
 function assertEquals(expected, actual) {
+
+  totalTest++;
 
   var resultStackLine = new Error().stack.split('\n')[2].trim();
   var funcName = resultStackLine.split(' ')[1];
   var line = resultStackLine.split(':').reverse()[1];
 
-  if (_.isEqual(expected, actual))
+  if (_.isEqual(expected, actual)) {
+    passed++;
     console.log('\x1b[32m%s\x1b[0m', 'Test ' + funcName + ' passed at line ' + line);
+  }
   else {
     console.log('\x1b[31m%s\x1b[0m', 'Test ' + funcName + ' FAILED at line ' + line);
     console.log('\x1b[31m%s\x1b[0m', 'Expected:\n ' + util.inspect(expected, false, null));
