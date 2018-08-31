@@ -51,6 +51,9 @@ const SET_OP_TYPES = Object.freeze({
  * @return {array}           an array equivalent to the path
  */
 function pathToArr(pathExpr) {
+
+  if (pathExpr.func === 'variable') return pathExpr.param[0];
+
   var curr = pathExpr;
   var result = [pathExpr.param[1]];
 
@@ -130,6 +133,8 @@ const EXPRESSIONS = {
         name: "BadAggregate",
         massage: "illegal aggregate argument"
       };
+
+    input = JSON.parse(input);
 
     var sum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
     var cnt = envir.group.length;
@@ -213,13 +218,41 @@ const EXPRESSIONS = {
   /* other */
 
   // retrieve the value of a variable under an environment
-  variable: (name, envir) => envir[name],
+  variable: (name, envir) => {
+
+    var result = envir[name];
+    
+    if (result === undefined) 
+      throw {
+        name: 'VariableNotDefined',
+        message: '\'' + name + '\'' + ' is not defined any where in the environment.' 
+      };
+
+    return result; 
+  },
 
   // retrieve the value of a variable located by a path 
   path: function(expr, attr, envir) {
+
     var exprResult = evalExprQuery(expr, envir);
-    return exprResult[attr];
+    
+    if (exprResult === null) return null;
+      
+    var finalReault = exprResult[attr];
+    return finalReault === undefined ? null: finalReault;;
   },
+
+  // retrieve an element of an array
+  arracs: function(expr, pos, envir) {
+    
+    var exprResult = evalExprQuery(expr, envir);
+    var posResult = evalExprQuery(pos, envir) - 1;
+
+    if (exprResult === null) return null;
+
+    var finalReault = exprResult[posResult];
+    return finalReault === undefined ? null: finalReault;
+  },  
 
   id: i => i, // identity
 
@@ -238,12 +271,25 @@ const EXPRESSIONS = {
   arr: function() {
     var result = [];
 
-    for(let i = 0; i < arguments.length - 1; i++){
+    for (let i = 0; i < arguments.length - 1; i++) {
       result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
     }
 
     return result;
   },
+
+  bag: function() {
+    var result = [];
+
+    for (let i = 0; i < arguments.length - 1; i++) {
+      result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
+    }
+
+    result.__isBag__ = true;
+    
+    return result;
+  },
+
 
   // nested SWF query
   sfw: function(query, db) {
@@ -271,7 +317,7 @@ const EXPRESSIONS = {
 function evalExprQuery(expr, envir) {
 
   // identity
-  if (expr.isExpr === undefined) 
+  if (expr === null || expr.isExpr === undefined) 
     return expr;
 
   expr = Object.assign({}, expr);
@@ -292,6 +338,14 @@ function evalExprQuery(expr, envir) {
 
   return result;
 }
+
+/**
+ * make an array to a bag...
+ */
+function bagify(arr) {
+  arr.__isBag__ = true;
+  return arr;
+} 
 
 /*-------------------------------- ITERATORS -----------------------------*/
 
@@ -1616,6 +1670,9 @@ function sfwQuery(database, query) {
     return result[0];
   }
 
+  if (query.orderby_clause === null || query.orderby_clause === undefined) 
+    result = bagify(result);
+  
   return result;
 }
 
@@ -1624,6 +1681,9 @@ function sfwQuery(database, query) {
  */
 function evalQuery(db, query) {
 
+  if (query === null || query === undefined) 
+    return null;
+
   if (query.from_clause !== undefined)
     return sfwQuery(db, query);
 
@@ -1631,4 +1691,5 @@ function evalQuery(db, query) {
     
 }
 
+exports.bagify = bagify;
 exports.evalQuery = evalQuery;

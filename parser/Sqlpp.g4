@@ -142,7 +142,8 @@ keyword
  ;
 
 value
-  : STRLITERAL
+  : SPECIAL_LITERAL
+  | STRLITERAL
   | NUMBER
   ;
 
@@ -213,6 +214,13 @@ K_MIN: M I N;
 K_MAX: M A X;
 K_AVG: A V G;
 K_COUNT: C O U N T;
+
+SPECIAL_LITERAL
+  : 'true'
+  | 'false' 
+  | 'null' 
+  | 'undefined'
+  ; 
 
 STRLITERAL
   : '\'' (~'\'' | '\'\'')* '\''
