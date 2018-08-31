@@ -9,4 +9,5 @@ testclauses:
 testqueries:
 	cd test && node testfullquerycrossed.js
 
-
+npmpackage:
+	npm install 
