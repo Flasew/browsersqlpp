@@ -1,6 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/lodash');
-var util = require('./node_modules/util');
+var _ = require('./node_modules/underscore/underscore.js');
 
 /*--------------------------- ENUM OF OPERATOR TYPES ---------------------*/
 /**
@@ -39,57 +38,6 @@ const SET_OP_TYPES = Object.freeze({
   INTERSECT: 1,
   EXCEPT:    2
 });
-
-/*--------------------------- UTILITY FUNCTIONS --------------------------*/
-
-/**
- * Convert a path expression object to an array object, each element being a
- * name of of the variable in the path (i.e. x.a => ['x', 'a']. 
- * Notice that the input expression must only have "path" 
- * and "variable" expressions in it.
- * @param  {object} pathExpr expression of the path
- * @return {array}           an array equivalent to the path
- */
-function pathToArr(pathExpr) {
-
-  if (pathExpr.func === 'variable') return pathExpr.param[0];
-
-  var curr = pathExpr;
-  var result = [pathExpr.param[1]];
-
-  while (curr.param[0].func !== 'variable') {
-    curr = curr.param[0];
-    result.unshift(curr.param[1]);
-  }
-
-  result.unshift(curr.param[0].param[0]);
-
-  return result;
-}
-
-/**
- * Collect all of the output of an iterator to an array. 
- * Precondition: iterator is not opened.
- * Postcondition: iterator is closed.
- * @param  {object} iterator an iterator object
- * @return {array}          all output of the iterator
- */
-function collectAll(iterator) {
-
-  iterator.open();
-
-  var result = [];
-  var row = iterator.next();
-
-  while (!row.done) {
-    result.push(row.value);
-    row = iterator.next();
-  }
-
-  iterator.close();
-
-  return result;
-}
 
 /*--------------------------- EXPRESSIONS --------------------------*/
 
@@ -293,10 +241,8 @@ const EXPRESSIONS = {
 
   // nested SWF query
   sfw: function(query, db) {
-    // console.log('nestdb: ', util.inspect(db))
-    // console.log('nestq: ', util.inspect(query))
+
     var result = sfwQuery(db, query);
-    // console.log('nest: ', util.inspect(result))
     return result;
   }
 
@@ -1676,6 +1622,57 @@ function sfwQuery(database, query) {
   return result;
 }
 
+/*--------------------------- UTILITY FUNCTIONS --------------------------*/
+
+/**
+ * Convert a path expression object to an array object, each element being a
+ * name of of the variable in the path (i.e. x.a => ['x', 'a']. 
+ * Notice that the input expression must only have "path" 
+ * and "variable" expressions in it.
+ * @param  {object} pathExpr expression of the path
+ * @return {array}           an array equivalent to the path
+ */
+function pathToArr(pathExpr) {
+
+  if (pathExpr.func === 'variable') return pathExpr.param[0];
+
+  var curr = pathExpr;
+  var result = [pathExpr.param[1]];
+
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result.unshift(curr.param[1]);
+  }
+
+  result.unshift(curr.param[0].param[0]);
+
+  return result;
+}
+
+/**
+ * Collect all of the output of an iterator to an array. 
+ * Precondition: iterator is not opened.
+ * Postcondition: iterator is closed.
+ * @param  {object} iterator an iterator object
+ * @return {array}          all output of the iterator
+ */
+function collectAll(iterator) {
+
+  iterator.open();
+
+  var result = [];
+  var row = iterator.next();
+
+  while (!row.done) {
+    result.push(row.value);
+    row = iterator.next();
+  }
+
+  iterator.close();
+
+  return result;
+}
+
 /**
  * Evaluate a general query
  */
@@ -1691,5 +1688,9 @@ function evalQuery(db, query) {
     
 }
 
+
 exports.bagify = bagify;
+exports.sfwQuery = sfwQuery;
 exports.evalQuery = evalQuery;
+exports.evalExprQuery = evalExprQuery;
+
