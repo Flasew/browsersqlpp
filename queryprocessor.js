@@ -950,25 +950,30 @@ try{
   var limitArea = document.getElementById("LIMIT");
   var selectArea = document.getElementById("SELECT");
 
-  button.addEventListener("click", function(){
-    var input = query.value;
-    //console.log(input);
+  var initParser = function(input) {
     var chars = new antlr4.InputStream(input);
     var lexer = new SqlppLexer(chars);
     var tokens  = new antlr4.CommonTokenStream(lexer);
     var parser = new SqlppParser(tokens);
     parser.buildParseTrees = true;
-    var tree = parser.query();
-    console.log(tree);
+    return parser;
+  };
+
+  button.addEventListener("click", function(){
+    
+    var tree = initParser(query.value).query();
+    var envirtree = initParser(envir.value).expr();
 
     var visitor = new SqlppVisitor();
+
     var ast = visitor.visit(tree);
+
+    var db = evalExprQuery(visitor.visit(envirtree));
     console.log(ast);
 
     //var listener = new SqlppListener();
     //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
 
-    var db = JSON.parse(envir.value);
     //var clause = JSON.parse(tree.value);
 
     var outputFrom = evalFrom(db, ast.from_clause);
