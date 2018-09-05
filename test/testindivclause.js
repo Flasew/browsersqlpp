@@ -1,5 +1,7 @@
 /**
  * Unit testing each iterator and eval* in both edition.
+ * Notice that this test manually assert if the array should be sorted since 
+ * it testing each iterator/function output by directly calling collectAll/function itself 
  */
 const util = require('../node_modules/util');
 const antlr4 = require('../node_modules/antlr4/index');

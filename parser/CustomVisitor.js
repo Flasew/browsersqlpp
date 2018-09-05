@@ -370,12 +370,28 @@ CustomVisitor.prototype.visitExprPath = function(ctx) {
 
 // Visit a parse tree produced by SqlppParser#ExprVal.
 CustomVisitor.prototype.visitExprVal = function(ctx) {
-  if (ctx.value().STRLITERAL() !== null) {
-    var quotedtext = ctx.value().STRLITERAL().getText();
+
+  var value = ctx.value();
+
+  if (value.STRLITERAL() !== null) {
+    var quotedtext = value.STRLITERAL().getText();
     return quotedtext.substring(1, quotedtext.length - 1);
   }
 
-  return Number(ctx.value().NUMBER().getText());
+  if (value.NUMBER() !== null) {
+    return Number(value.NUMBER().getText());
+  }
+
+  switch (value.SPECIAL_LITERAL().getText().toLowerCase()) {
+    case 'null':      return null;
+    case 'true':      return true;
+    case 'false':     return false;
+    case 'undefined': return undefined;
+    default: throw {
+      name: 'UnrecogonizedSpecialValue', 
+      message: value.SPECIAL_LITERAL().getText().toLowerCase() + ' is not a valid special value.'
+    }
+  }
 };
 
 

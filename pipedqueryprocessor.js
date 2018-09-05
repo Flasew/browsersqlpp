@@ -1,6 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/lodash');
-var util = require('./node_modules/util');
+var _ = require('./node_modules/underscore/underscore.js');
 
 /*--------------------------- ENUM OF OPERATOR TYPES ---------------------*/
 /**
@@ -39,54 +38,6 @@ const SET_OP_TYPES = Object.freeze({
   INTERSECT: 1,
   EXCEPT:    2
 });
-
-/*--------------------------- UTILITY FUNCTIONS --------------------------*/
-
-/**
- * Convert a path expression object to an array object, each element being a
- * name of of the variable in the path (i.e. x.a => ['x', 'a']. 
- * Notice that the input expression must only have "path" 
- * and "variable" expressions in it.
- * @param  {object} pathExpr expression of the path
- * @return {array}           an array equivalent to the path
- */
-function pathToArr(pathExpr) {
-  var curr = pathExpr;
-  var result = [pathExpr.param[1]];
-
-  while (curr.param[0].func !== 'variable') {
-    curr = curr.param[0];
-    result.unshift(curr.param[1]);
-  }
-
-  result.unshift(curr.param[0].param[0]);
-
-  return result;
-}
-
-/**
- * Collect all of the output of an iterator to an array. 
- * Precondition: iterator is not opened.
- * Postcondition: iterator is closed.
- * @param  {object} iterator an iterator object
- * @return {array}          all output of the iterator
- */
-function collectAll(iterator) {
-
-  iterator.open();
-
-  var result = [];
-  var row = iterator.next();
-
-  while (!row.done) {
-    result.push(row.value);
-    row = iterator.next();
-  }
-
-  iterator.close();
-
-  return result;
-}
 
 /*--------------------------- EXPRESSIONS --------------------------*/
 
@@ -130,6 +81,8 @@ const EXPRESSIONS = {
         name: "BadAggregate",
         massage: "illegal aggregate argument"
       };
+
+    input = JSON.parse(input);
 
     var sum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
     var cnt = envir.group.length;
@@ -213,13 +166,41 @@ const EXPRESSIONS = {
   /* other */
 
   // retrieve the value of a variable under an environment
-  variable: (name, envir) => envir[name],
+  variable: (name, envir) => {
+
+    var result = envir[name];
+    
+    if (result === undefined) 
+      throw {
+        name: 'VariableNotDefined',
+        message: '\'' + name + '\'' + ' is not defined any where in the environment.' 
+      };
+
+    return result; 
+  },
 
   // retrieve the value of a variable located by a path 
   path: function(expr, attr, envir) {
+
     var exprResult = evalExprQuery(expr, envir);
-    return exprResult[attr];
+    
+    if (exprResult === null) return null;
+      
+    var finalReault = exprResult[attr];
+    return finalReault === undefined ? null: finalReault;;
   },
+
+  // retrieve an element of an array
+  arracs: function(expr, pos, envir) {
+    
+    var exprResult = evalExprQuery(expr, envir);
+    var posResult = evalExprQuery(pos, envir) - 1;
+
+    if (exprResult === null) return null;
+
+    var finalReault = exprResult[posResult];
+    return finalReault === undefined ? null: finalReault;
+  },  
 
   id: i => i, // identity
 
@@ -238,19 +219,30 @@ const EXPRESSIONS = {
   arr: function() {
     var result = [];
 
-    for(let i = 0; i < arguments.length - 1; i++){
+    for (let i = 0; i < arguments.length - 1; i++) {
       result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
     }
 
     return result;
   },
 
+  bag: function() {
+    var result = [];
+
+    for (let i = 0; i < arguments.length - 1; i++) {
+      result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
+    }
+
+    result.__isBag__ = true;
+    
+    return result;
+  },
+
+
   // nested SWF query
   sfw: function(query, db) {
-    // console.log('nestdb: ', util.inspect(db))
-    // console.log('nestq: ', util.inspect(query))
+
     var result = sfwQuery(db, query);
-    // console.log('nest: ', util.inspect(result))
     return result;
   }
 
@@ -271,7 +263,7 @@ const EXPRESSIONS = {
 function evalExprQuery(expr, envir) {
 
   // identity
-  if (expr.isExpr === undefined) 
+  if (expr === null || expr.isExpr === undefined) 
     return expr;
 
   expr = Object.assign({}, expr);
@@ -292,6 +284,14 @@ function evalExprQuery(expr, envir) {
 
   return result;
 }
+
+/**
+ * make an array to a bag...
+ */
+function bagify(arr) {
+  arr.__isBag__ = true;
+  return arr;
+} 
 
 /*-------------------------------- ITERATORS -----------------------------*/
 
@@ -1616,6 +1616,60 @@ function sfwQuery(database, query) {
     return result[0];
   }
 
+  if (query.orderby_clause === null || query.orderby_clause === undefined) 
+    result = bagify(result);
+  
+  return result;
+}
+
+/*--------------------------- UTILITY FUNCTIONS --------------------------*/
+
+/**
+ * Convert a path expression object to an array object, each element being a
+ * name of of the variable in the path (i.e. x.a => ['x', 'a']. 
+ * Notice that the input expression must only have "path" 
+ * and "variable" expressions in it.
+ * @param  {object} pathExpr expression of the path
+ * @return {array}           an array equivalent to the path
+ */
+function pathToArr(pathExpr) {
+
+  if (pathExpr.func === 'variable') return pathExpr.param[0];
+
+  var curr = pathExpr;
+  var result = [pathExpr.param[1]];
+
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result.unshift(curr.param[1]);
+  }
+
+  result.unshift(curr.param[0].param[0]);
+
+  return result;
+}
+
+/**
+ * Collect all of the output of an iterator to an array. 
+ * Precondition: iterator is not opened.
+ * Postcondition: iterator is closed.
+ * @param  {object} iterator an iterator object
+ * @return {array}          all output of the iterator
+ */
+function collectAll(iterator) {
+
+  iterator.open();
+
+  var result = [];
+  var row = iterator.next();
+
+  while (!row.done) {
+    result.push(row.value);
+    row = iterator.next();
+  }
+
+  iterator.close();
+
   return result;
 }
 
@@ -1624,6 +1678,9 @@ function sfwQuery(database, query) {
  */
 function evalQuery(db, query) {
 
+  if (query === null || query === undefined) 
+    return null;
+
   if (query.from_clause !== undefined)
     return sfwQuery(db, query);
 
@@ -1631,4 +1688,9 @@ function evalQuery(db, query) {
     
 }
 
+
+exports.bagify = bagify;
+exports.sfwQuery = sfwQuery;
 exports.evalQuery = evalQuery;
+exports.evalExprQuery = evalExprQuery;
+
