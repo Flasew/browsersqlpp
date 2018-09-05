@@ -1,5 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/underscore/underscore.js');
+var _ = require('./node_modules/lodash');
 
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
@@ -934,90 +934,6 @@ function sfwQuery(db, query) {
 
   return result;
 }
-
-try{
-// for demo purpose the html is put here
-  var query = document.getElementById("QUERY");
-  var envir = document.getElementById("DB");
-  var button = document.getElementById("BUTTON");
-
-  var fromArea = document.getElementById("FROM");
-  var whereArea = document.getElementById("WHERE");
-  var groupbyArea = document.getElementById("GROUPBY");
-  var havingArea = document.getElementById("HAVING");
-  var orderbyArea = document.getElementById("ORDERBY");
-  var offsetArea = document.getElementById("OFFSET");
-  var limitArea = document.getElementById("LIMIT");
-  var selectArea = document.getElementById("SELECT");
-
-  var initParser = function(input) {
-    var chars = new antlr4.InputStream(input);
-    var lexer = new SqlppLexer(chars);
-    var tokens  = new antlr4.CommonTokenStream(lexer);
-    var parser = new SqlppParser(tokens);
-    parser.buildParseTrees = true;
-    return parser;
-  };
-
-  button.addEventListener("click", function(){
-    
-    var tree = initParser(query.value).query();
-    var envirtree = initParser(envir.value).expr();
-
-    var visitor = new SqlppVisitor();
-
-    var ast = visitor.visit(tree);
-
-    var db = evalExprQuery(visitor.visit(envirtree));
-    console.log(ast);
-
-    //var listener = new SqlppListener();
-    //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
-
-    //var clause = JSON.parse(tree.value);
-
-    var outputFrom = evalFrom(db, ast.from_clause);
-    fromArea.innerHTML = JSON.stringify(outputFrom);
-
-    var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
-    whereArea.innerHTML = JSON.stringify(outputWhere);
-
-    var outputGroupBy = evalGroupby(db, outputWhere, ast.groupby_clause);
-    groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
-
-    var outputHaving = evalHaving(db, outputGroupBy, ast.having_clause);
-    havingArea.innerHTML = JSON.stringify(outputHaving);
-
-    var outputOrderBy = evalOrderby(db, outputHaving, ast.orderby_clause);
-    orderbyArea.innerHTML = JSON.stringify(outputOrderBy);
-
-    var outputOffset = evalOffset(db, outputOrderBy, ast.offset_clause);
-    offsetArea.innerHTML = JSON.stringify(outputOffset);
-
-    var outputLimit = evalLimit(db, outputOffset, ast.limit_clause);
-    limitArea.innerHTML = JSON.stringify(outputLimit);
-
-    var outputSelect = evalSelect(db, outputLimit, ast.select_clause);
-    selectArea.innerHTML = JSON.stringify(outputSelect);
-
-    //console.log("Output of FROM Clause:");
-    //console.log(outputFrom);
-    //console.log("Output of WHERE Clause:");
-    //console.log(outputWhere);
-    //console.log("Output of GROUP BY Clause:");
-    //console.log(outputGroupBy);
-    //console.log("Output of HAVING Clause:");
-    //console.log(outputHaving);
-    //console.log("Output of ORDER BY Clause:");
-    //console.log(outputOrderBy);
-    //console.log("Output of OFFSET Clause:");
-    //console.log(outputOffset);
-    //console.log("Output of LIMIT Clause:");
-    //console.log(outputLimit);
-    //console.log("Output of SELECT Clause:");
-    //console.log(outputSelect);
-  });
-} catch (e) {}
 
 exports.bagify = bagify;
 exports.evalQuery = evalQuery;
