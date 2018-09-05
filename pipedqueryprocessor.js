@@ -1,5 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/underscore/underscore.js');
+var _ = require('./node_modules/lodash');
 
 /*--------------------------- ENUM OF OPERATOR TYPES ---------------------*/
 /**
