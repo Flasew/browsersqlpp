@@ -51,13 +51,14 @@
     //var SqlppListener = require('./parser/SqlppListener').SqlppListener;
     var SqlppVisitor = require('./parser/CustomVisitor').CustomVisitor;
 
-
+    var evalQuery = require("./pipedqueryprocessor.js").evalQuery;
+    var evalExprQuery = require("./pipedqueryprocessor.js").evalExprQuery;
     //var input = "SELECT ELEMENT r.a FROM R AS r";
-
-
   </script>
 
-  <script type="text/javascript" src="pipedqueryprocessor.js"></script>
+  <script type="text/javascript" src="./node_modules/lodash/lodash.js"></script>
+  <!-- <script type="text/javascript" src="pipedqueryprocessor.js"></script> -->
+  
   <script>
     var query = document.getElementById("QUERY");
     var envir = document.getElementById("DB");
@@ -65,25 +66,27 @@
 
     var selectArea = document.getElementById("SELECT");
 
-    button.addEventListener("click", function(){
-      selectArea.innerHTML = "";
-
-      var input = query.value;
-
+    var initParser = function(input) {
       var chars = new antlr4.InputStream(input);
       var lexer = new SqlppLexer(chars);
       var tokens  = new antlr4.CommonTokenStream(lexer);
       var parser = new SqlppParser(tokens);
       parser.buildParseTrees = true;
-      var tree = parser.query();
+      return parser;
+    };
+
+    button.addEventListener("click", function(){
+      selectArea.innerHTML = "";
+
+      var tree = initParser(query.value).query();
+      var envirtree = initParser(envir.value).expr();
 
       var visitor = new SqlppVisitor();
       var ast = visitor.visit(tree);
+      var db = evalExprQuery(visitor.visit(envirtree), {});
       console.log(ast);
 
-      var db = JSON.parse(envir.value);
-
-      var queryResult = sfwQuery(db, ast);
+      var queryResult = evalQuery(db, ast);
 
       if(Array.isArray(queryResult)){
         for(let i = 0; i < queryResult.length; i++){

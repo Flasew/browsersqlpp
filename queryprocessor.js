@@ -1,5 +1,5 @@
 var hash = require('./node_modules/object-hash/dist/object_hash.js');
-var _ = require('./node_modules/lodash');
+var _ = require('./node_modules/underscore/underscore.js');
 
 /**
  * Type of different "from operations" as an enum. Used in the from clause. 
@@ -78,6 +78,8 @@ const EXPRESSIONS = {
         name: "BadAggregate",
         massage: "illegal aggregate argument"
       };
+
+    input = JSON.parse(input);
 
     var sum = envir.group.map(item => evalExprQuery(input, item)).reduce((acc, curr) => (acc + curr), 0);
     var cnt = envir.group.length;
@@ -161,13 +163,41 @@ const EXPRESSIONS = {
   /* other */
 
   // retrieve the value of a variable under an environment
-  variable: (name, envir) => envir[name],
+  variable: (name, envir) => {
+    
+    var result = envir[name];
+    
+    if (result === undefined) 
+      throw {
+        name: 'VariableNotDefined',
+        message: '\'' + name + '\'' + ' is not defined any where in the environment.' 
+      };
+
+    return result; 
+  },
 
   // retrieve the value of a variable located by a path 
   path: function(expr, attr, envir) {
+
     var exprResult = evalExprQuery(expr, envir);
-    return exprResult[attr];
+    
+    if (exprResult === null) return null;
+      
+    var finalReault = exprResult[attr];
+    return finalReault === undefined ? null: finalReault;;
   },
+
+  // retrieve an element of an array
+  arracs: function(expr, pos, envir) {
+    
+    var exprResult = evalExprQuery(expr, envir);
+    var posResult = evalExprQuery(pos, envir) - 1;
+
+    if (exprResult === null) return null;
+
+    var finalReault = exprResult[posResult];
+    return finalReault === undefined ? null: finalReault;
+  },  
 
   id: i => i, // identity
 
@@ -193,6 +223,18 @@ const EXPRESSIONS = {
     return result;
   },
 
+  bag: function() {
+    var result = [];
+
+    for(let i = 0; i < arguments.length - 1; i++){
+      result[i] = evalExprQuery(arguments[i], arguments[arguments.length - 1]);
+    }
+
+    result.__isBag__ = true;
+    
+    return result;
+  },
+
   // nested SWF query
   sfw: function(query, db) {
     var result = sfwQuery(db, query);
@@ -201,15 +243,6 @@ const EXPRESSIONS = {
 
 };
 
-/**
- * Evaluate a general query
- */
-function evalQuery(db, query) {
-  if (query.from_clause !== undefined)
-    return sfwQuery(db, query);
-  return evalExprQuery(query, db);
-    
-}
 
 /**
  * Evaluate an expression query. An expression query is specified as an object
@@ -225,8 +258,10 @@ function evalQuery(db, query) {
  */
 function evalExprQuery(expr, envir) {
 
+  if (expr === undefined) return null;
+
   // identity
-  if (expr.isExpr === undefined) 
+  if (expr === null || expr.isExpr === undefined) 
     return expr;
 
   expr = Object.assign({}, expr);
@@ -247,42 +282,49 @@ function evalExprQuery(expr, envir) {
   return result;
 }
 
+
 /**
- * Evaluate an SWF (select-where-from) query
- * @param  {object} db    raw database parsed to javascript object (NOT JSON)
- * @param  {object} query Parsed query clause, in the format specified in readme.
- * @return {object}       result of query, in javascript object (NOT JSON)
+ * make an array to a bag...
  */
-function sfwQuery(db, query) {
-  var prevOutput = evalFrom(db, query.from_clause);
+function bagify(arr) {
+  arr.__isBag__ = true;
+  return arr;
+} 
 
-  if (query.where_clause !== null && query.where_clause !== undefined) 
-    prevOutput = evalWhere(db, prevOutput, query.where_clause);
+/**
+ * Convert a path expression back to the string token, for group by case 3
+ * @param  {object} pathExpr parsed path expression
+ * @return {string}          original string token with '.'
+ */
+function pathToStr(pathExpr) {
+  var curr = pathExpr;
+  var result = pathExpr.param[1];
 
-  if (query.groupby_clause !== null && query.groupby_clause !== undefined) 
-    prevOutput = evalGroupby(db, prevOutput, query.groupby_clause);
-  
-  if (query.having_clause !== null && query.having_clause !== undefined) {
-    if (query.groupby_clause === null || query.groupby_clause === undefined) {
-      throw {
-        name: 'InvalidHavingClause',
-        message: 'cannot use a having clause without a group by clause'
-      };
-    }
-    prevOutput = evalHaving(db, prevOutput, query.having_clause);
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result = curr.param[1] + '.' + result;
   }
 
-  if (query.orderby_clause !== null && query.orderby_clause !== undefined) 
-    prevOutput = evalOrderby(db, prevOutput, query.orderby_clause);
-  
-  if (query.offset_clause !== null && query.offset_clause !== undefined) 
-    prevOutput = evalOffset(db, prevOutput, query.offset_clause);
-  
-  if (query.limit_clause !== null && query.limit_clause !== undefined) 
-    prevOutput = evalLimit(db, prevOutput, query.limit_clause);
+  result = curr.param[0].param[0] + '.' + result;
 
-  return evalSelect(db, prevOutput, query.select_clause);
+  return result;
+}
 
+function pathToArr(pathExpr) {
+
+  if (pathExpr.func === 'variable') return pathExpr.param[0];
+
+  var curr = pathExpr;
+  var result = [pathExpr.param[1]];
+
+  while (curr.param[0].func !== 'variable') {
+    curr = curr.param[0];
+    result.unshift(curr.param[1]);
+  }
+
+  result.unshift(curr.param[0].param[0]);
+
+  return result;
 }
 
 /**
@@ -295,119 +337,6 @@ function sfwQuery(db, query) {
  */
 function evalFrom(envir, fromClause){
   return evalFromItem(fromClause, envir, [{}]);
-}
-
-/**
- * Evaluate the WHERE clause of a query. The parsed format of WHERE clause will be a single expression.
- * @param  {object} envir          environment of the evaluation containing variable definitions 
- * @param  {array}  prevBindOutput binding tuple output of the FROM clause
- * @param  {object} whereClause    WHERE clause of the query parsed to javascript object format
- * @return {array}                 result of the execution of WHERE clause.
- */
-function evalWhere(envir, prevBindOutput, whereClause) {
-
-  if(whereClause === undefined || whereClause === null){
-    return prevBindOutput;
-  }
-
-  var currBind = [];
-
-  for (let item of prevBindOutput) {
-    if (evalExprQuery(whereClause, Object.assign({}, envir, item))) {
-      currBind.push(item);
-    }
-  }
-  return currBind;
-}
-
-/**
- * Evaluate the SELECT clause of a query with no aggregate query. 
- * @param  {object} envir           the environment of a query
- * @param  {array}  prevBindOutput binding tuple out of the previous clause
- * @param  {object} selectClause    select clause parsed to the javascript object format
- * @return {array}                  result of the query (not distinguished between bag and arr for now)
- */
-function evalSelect(envir, prevBindOutput, selectClause) {
-
-  switch (selectClause.selectType) {
-
-    // SELECT ELEMENT ...
-    case SEL_TYPES.ELEMENT: {
-      var result = []; 
-      for(let item of prevBindOutput) {
-        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, envir, item)));
-      }
-
-      return result;
-    }
-
-    // SELECT ATTRIBUTE {:} ...
-    case SEL_TYPES.ATTRIBUTE: {
-      var result = {};
-
-      for(let item of prevBindOutput) {
-        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, envir, item));
-
-        if(typeof(attrName) !== 'string'){
-          throw {
-            name: 'NotString',
-            message: 'Not a string'
-          };
-        }
-
-        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, envir, item));
-
-        result[attrName] = attrVal;
-      }
-
-      return result;
-    }
-
-    // SELECT ..., parsed to SELECT ELEMENT first and then recursively evaluated
-    case SEL_TYPES.SQLSELECT: {
-
-      // SELECT * case. the table must be homomorphic to a valid SQL table format
-      if (selectClause.selectAll) {
-        var result = [];
-        for (let t of prevBindOutput) {
-          let newTuple = {}
-          for (let table in t) 
-            for (let col in t[table])
-              newTuple[col] = t[table][col];
-          result.push(newTuple);
-        }
-        return result;
-      }
-
-      var elementReconstruct = {
-        selectType: SEL_TYPES.ELEMENT,
-        selectExpr: {
-          func: 'obj',
-          param: [],
-          isExpr: true
-        }
-      };
-
-      for(let item of selectClause.selectPairs) {
-        if(item.as === undefined){
-          let lastElementIndex = item.from.param.length - 1;
-
-          item.as = item.from.param[lastElementIndex];
-        }
-
-        let newObj = {};
-        newObj.attrName = item.as;
-        newObj.attrVal = item.from;
-
-        elementReconstruct.selectExpr.param.push(newObj);
-      }
-
-      var result = evalSelect(envir, prevBindOutput, elementReconstruct);
-
-      return result;
-    }
-  }
-
 }
 
 /**
@@ -661,6 +590,29 @@ function evalFromItem(fromItem, envir, bindTuple) {
   return newBind;
 }
 
+/**
+ * Evaluate the WHERE clause of a query. The parsed format of WHERE clause will be a single expression.
+ * @param  {object} envir          environment of the evaluation containing variable definitions 
+ * @param  {array}  prevBindOutput binding tuple output of the FROM clause
+ * @param  {object} whereClause    WHERE clause of the query parsed to javascript object format
+ * @return {array}                 result of the execution of WHERE clause.
+ */
+function evalWhere(envir, prevBindOutput, whereClause) {
+
+  if(whereClause === undefined || whereClause === null){
+    return prevBindOutput;
+  }
+
+  var currBind = [];
+
+  for (let item of prevBindOutput) {
+    if (evalExprQuery(whereClause, Object.assign({}, envir, item))) {
+      currBind.push(item);
+    }
+  }
+  return currBind;
+}
+
 /* group: [{
     expr:
     as:
@@ -828,43 +780,244 @@ function evalLimit(envir, prevBindOutput, limitClause){
 
   var result = [];
 
-  for(let i = 0; i < limit; i++){
+  for (let i = 0; i < limit && i < prevBindOutput.length; i++){
     result.push(prevBindOutput[i]);
   }
 
   return result;
 }
 
+
 /**
- * Convert a path expression back to the string token, for group by case 3
- * @param  {object} pathExpr parsed path expression
- * @return {string}          original string token with '.'
+ * Evaluate the SELECT clause of a query with no aggregate query. 
+ * @param  {object} envir           the environment of a query
+ * @param  {array}  prevBindOutput binding tuple out of the previous clause
+ * @param  {object} selectClause    select clause parsed to the javascript object format
+ * @return {array}                  result of the query (not distinguished between bag and arr for now)
  */
-function pathToStr(pathExpr) {
-  var curr = pathExpr;
-  var result = pathExpr.param[1];
+function evalSelect(envir, prevBindOutput, selectClause) {
 
-  while (curr.param[0].func !== 'variable') {
-    curr = curr.param[0];
-    result = curr.param[1] + '.' + result;
+  switch (selectClause.selectType) {
+
+    // SELECT ELEMENT ...
+    case SEL_TYPES.ELEMENT: {
+      var result = []; 
+      for(let item of prevBindOutput) {
+        result.push(evalExprQuery(selectClause.selectExpr, Object.assign({}, envir, item)));
+      }
+
+      return result;
+    }
+
+    // SELECT ATTRIBUTE {:} ...
+    case SEL_TYPES.ATTRIBUTE: {
+      var result = {};
+
+      for(let item of prevBindOutput) {
+        let attrName = evalExprQuery(selectClause.selectAttrName, Object.assign({}, envir, item));
+
+        if(typeof(attrName) !== 'string'){
+          throw {
+            name: 'NotString',
+            message: 'Not a string'
+          };
+        }
+
+        let attrVal = evalExprQuery(selectClause.selectAttrVal, Object.assign({}, envir, item));
+
+        result[attrName] = attrVal;
+      }
+
+      return result;
+    }
+
+    // SELECT ..., parsed to SELECT ELEMENT first and then recursively evaluated
+    case SEL_TYPES.SQLSELECT: {
+
+      // SELECT * case. the table must be homomorphic to a valid SQL table format
+      if (selectClause.selectAll) {
+        var result = [];
+        for (let t of prevBindOutput) {
+          let newTuple = {}
+          for (let table in t) 
+            for (let col in t[table])
+              newTuple[col] = t[table][col];
+          result.push(newTuple);
+        }
+        return result;
+      }
+
+      var elementReconstruct = {
+        selectType: SEL_TYPES.ELEMENT,
+        selectExpr: {
+          func: 'obj',
+          param: [],
+          isExpr: true
+        }
+      };
+
+      for(let item of selectClause.selectPairs) {
+        if(item.as === undefined){
+          let lastElementIndex = item.from.param.length - 1;
+
+          item.as = item.from.param[lastElementIndex];
+        }
+
+        let newObj = {};
+        newObj.attrName = item.as;
+        newObj.attrVal = item.from;
+
+        elementReconstruct.selectExpr.param.push(newObj);
+      }
+
+      var result = evalSelect(envir, prevBindOutput, elementReconstruct);
+
+      return result;
+    }
   }
 
-  result = curr.param[0].param[0] + '.' + result;
+}
+
+/**
+ * Evaluate a general query
+ */
+function evalQuery(db, query) {
+
+  if (query === null || query === undefined) 
+    return null;
+
+  if (query.from_clause !== undefined)
+    return sfwQuery(db, query);
+
+  return evalExprQuery(query, db);
+    
+}
+
+/**
+ * Evaluate an SWF (select-where-from) query
+ * @param  {object} db    raw database parsed to javascript object (NOT JSON)
+ * @param  {object} query Parsed query clause, in the format specified in readme.
+ * @return {object}       result of query, in javascript object (NOT JSON)
+ */
+function sfwQuery(db, query) {
+  var prevOutput = evalFrom(db, query.from_clause);
+
+  if (query.where_clause !== null && query.where_clause !== undefined) 
+    prevOutput = evalWhere(db, prevOutput, query.where_clause);
+
+  if (query.groupby_clause !== null && query.groupby_clause !== undefined) 
+    prevOutput = evalGroupby(db, prevOutput, query.groupby_clause);
+  
+  if (query.having_clause !== null && query.having_clause !== undefined) {
+    if (query.groupby_clause === null || query.groupby_clause === undefined) {
+      throw {
+        name: 'InvalidHavingClause',
+        message: 'cannot use a having clause without a group by clause'
+      };
+    }
+    prevOutput = evalHaving(db, prevOutput, query.having_clause);
+  }
+
+  if (query.orderby_clause !== null && query.orderby_clause !== undefined) 
+    prevOutput = evalOrderby(db, prevOutput, query.orderby_clause);
+  
+  if (query.offset_clause !== null && query.offset_clause !== undefined) 
+    prevOutput = evalOffset(db, prevOutput, query.offset_clause);
+  
+  if (query.limit_clause !== null && query.limit_clause !== undefined) 
+    prevOutput = evalLimit(db, prevOutput, query.limit_clause);
+
+  var result = evalSelect(db, prevOutput, query.select_clause);
+
+  if (Array.isArray(result) && (query.orderby_clause === null || query.orderby_clause === undefined)) 
+    result = bagify(result);
 
   return result;
 }
 
-function pathToArr(pathExpr) {
-  var curr = pathExpr;
-  var result = [pathExpr.param[1]];
+try{
+// for demo purpose the html is put here
+  var query = document.getElementById("QUERY");
+  var envir = document.getElementById("DB");
+  var button = document.getElementById("BUTTON");
 
-  while (curr.param[0].func !== 'variable') {
-    curr = curr.param[0];
-    result.unshift(curr.param[1]);
-  }
+  var fromArea = document.getElementById("FROM");
+  var whereArea = document.getElementById("WHERE");
+  var groupbyArea = document.getElementById("GROUPBY");
+  var havingArea = document.getElementById("HAVING");
+  var orderbyArea = document.getElementById("ORDERBY");
+  var offsetArea = document.getElementById("OFFSET");
+  var limitArea = document.getElementById("LIMIT");
+  var selectArea = document.getElementById("SELECT");
 
-  result.unshift(curr.param[0].param[0]);
+  var initParser = function(input) {
+    var chars = new antlr4.InputStream(input);
+    var lexer = new SqlppLexer(chars);
+    var tokens  = new antlr4.CommonTokenStream(lexer);
+    var parser = new SqlppParser(tokens);
+    parser.buildParseTrees = true;
+    return parser;
+  };
 
-  return result;
-}
+  button.addEventListener("click", function(){
+    
+    var tree = initParser(query.value).query();
+    var envirtree = initParser(envir.value).expr();
 
+    var visitor = new SqlppVisitor();
+
+    var ast = visitor.visit(tree);
+
+    var db = evalExprQuery(visitor.visit(envirtree));
+    console.log(ast);
+
+    //var listener = new SqlppListener();
+    //antlr4.tree.ParseTreeWalker.DEFAULT.walk(listener, tree);
+
+    //var clause = JSON.parse(tree.value);
+
+    var outputFrom = evalFrom(db, ast.from_clause);
+    fromArea.innerHTML = JSON.stringify(outputFrom);
+
+    var outputWhere = evalWhere(db, outputFrom, ast.where_clause);
+    whereArea.innerHTML = JSON.stringify(outputWhere);
+
+    var outputGroupBy = evalGroupby(db, outputWhere, ast.groupby_clause);
+    groupbyArea.innerHTML = JSON.stringify(outputGroupBy);
+
+    var outputHaving = evalHaving(db, outputGroupBy, ast.having_clause);
+    havingArea.innerHTML = JSON.stringify(outputHaving);
+
+    var outputOrderBy = evalOrderby(db, outputHaving, ast.orderby_clause);
+    orderbyArea.innerHTML = JSON.stringify(outputOrderBy);
+
+    var outputOffset = evalOffset(db, outputOrderBy, ast.offset_clause);
+    offsetArea.innerHTML = JSON.stringify(outputOffset);
+
+    var outputLimit = evalLimit(db, outputOffset, ast.limit_clause);
+    limitArea.innerHTML = JSON.stringify(outputLimit);
+
+    var outputSelect = evalSelect(db, outputLimit, ast.select_clause);
+    selectArea.innerHTML = JSON.stringify(outputSelect);
+
+    //console.log("Output of FROM Clause:");
+    //console.log(outputFrom);
+    //console.log("Output of WHERE Clause:");
+    //console.log(outputWhere);
+    //console.log("Output of GROUP BY Clause:");
+    //console.log(outputGroupBy);
+    //console.log("Output of HAVING Clause:");
+    //console.log(outputHaving);
+    //console.log("Output of ORDER BY Clause:");
+    //console.log(outputOrderBy);
+    //console.log("Output of OFFSET Clause:");
+    //console.log(outputOffset);
+    //console.log("Output of LIMIT Clause:");
+    //console.log(outputLimit);
+    //console.log("Output of SELECT Clause:");
+    //console.log(outputSelect);
+  });
+} catch (e) {}
+
+exports.bagify = bagify;
+exports.evalQuery = evalQuery;

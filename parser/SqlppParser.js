@@ -6,7 +6,7 @@ var SqlppVisitor = require('./SqlppVisitor').SqlppVisitor;
 var grammarFileName = "Sqlpp.g4";
 
 var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
-    "\u0003D\u017b\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
+    "\u0003E\u017b\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
     "\u0004\u0004\u0005\t\u0005\u0004\u0006\t\u0006\u0004\u0007\t\u0007\u0004",
     "\b\t\b\u0004\t\t\t\u0004\n\t\n\u0004\u000b\t\u000b\u0004\f\t\f\u0004",
     "\r\t\r\u0004\u000e\t\u000e\u0004\u000f\t\u000f\u0004\u0010\t\u0010\u0004",
@@ -70,9 +70,9 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0014\u0002\u0004\n\u001a\u0015\u0002\u0004\u0006\b\n\f\u000e\u0010",
     "\u0012\u0014\u0016\u0018\u001a\u001c\u001e \"$&\u0002\u000e\u0004\u0002",
     "\"\"&&\u0003\u0002\"%\u0003\u0002/1\u0003\u000245\u0003\u0002;?\u0004",
-    "\u0002\r\u000eBB\u0003\u0002\u000f\u0010\u0003\u0002\u0011\u0014\u0003",
+    "\u0002\r\u000eCC\u0003\u0002\u000f\u0010\u0003\u0002\u0011\u0014\u0003",
     "\u0002\u0015\u0018\u0005\u0002\u000f\u0010\u001b\u001b88\u0003\u0002",
-    "\u001c?\u0003\u0002@A\u0002\u01af\u0002*\u0003\u0002\u0002\u0002\u0004",
+    "\u001c?\u0003\u0002@B\u0002\u01af\u0002*\u0003\u0002\u0002\u0002\u0004",
     "[\u0003\u0002\u0002\u0002\u0006w\u0003\u0002\u0002\u0002\by\u0003\u0002",
     "\u0002\u0002\n\u0098\u0003\u0002\u0002\u0002\f\u00c1\u0003\u0002\u0002",
     "\u0002\u000e\u00c4\u0003\u0002\u0002\u0002\u0010\u00d6\u0003\u0002\u0002",
@@ -195,7 +195,7 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0005\"\u0012\u0002\u00fd\u00fe\u0005\u001c\u000f\u0002\u00fe\u00ff",
     "\u0005\u001a\u000e\u0010\u00ff\u0145\u0003\u0002\u0002\u0002\u0100\u0101",
     "\t\u0006\u0002\u0002\u0101\u0105\u0007\u0007\u0002\u0002\u0102\u0106",
-    "\u0007,\u0002\u0002\u0103\u0106\u0007B\u0002\u0002\u0104\u0106\u0005",
+    "\u0007,\u0002\u0002\u0103\u0106\u0007C\u0002\u0002\u0104\u0106\u0005",
     "\u001a\u000e\u0002\u0105\u0102\u0003\u0002\u0002\u0002\u0105\u0103\u0003",
     "\u0002\u0002\u0002\u0105\u0104\u0003\u0002\u0002\u0002\u0106\u0107\u0003",
     "\u0002\u0002\u0002\u0107\u0145\u0007\b\u0002\u0002\u0108\u0109\u0005",
@@ -262,12 +262,12 @@ var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
     "\u0002\u0168\u0169\t\u000b\u0002\u0002\u0169\u001d\u0003\u0002\u0002",
     "\u0002\u016a\u016b\t\f\u0002\u0002\u016b\u001f\u0003\u0002\u0002\u0002",
     "\u016c\u016d\t\r\u0002\u0002\u016d!\u0003\u0002\u0002\u0002\u016e\u0171",
-    "\u0007C\u0002\u0002\u016f\u0171\u0005\u001e\u0010\u0002\u0170\u016e",
+    "\u0007D\u0002\u0002\u016f\u0171\u0005\u001e\u0010\u0002\u0170\u016e",
     "\u0003\u0002\u0002\u0002\u0170\u016f\u0003\u0002\u0002\u0002\u0171#",
-    "\u0003\u0002\u0002\u0002\u0172\u0175\u0007C\u0002\u0002\u0173\u0175",
+    "\u0003\u0002\u0002\u0002\u0172\u0175\u0007D\u0002\u0002\u0173\u0175",
     "\u0005\u001e\u0010\u0002\u0174\u0172\u0003\u0002\u0002\u0002\u0174\u0173",
     "\u0003\u0002\u0002\u0002\u0175%\u0003\u0002\u0002\u0002\u0176\u0179",
-    "\u0007C\u0002\u0002\u0177\u0179\u0005\u001e\u0010\u0002\u0178\u0176",
+    "\u0007D\u0002\u0002\u0177\u0179\u0005\u001e\u0010\u0002\u0178\u0176",
     "\u0003\u0002\u0002\u0002\u0178\u0177\u0003\u0002\u0002\u0002\u0179\'",
     "\u0003\u0002\u0002\u00025*/258;>AEHKNQTW[jptw\u0082\u0098\u009e\u00a0",
     "\u00a3\u00ac\u00af\u00bc\u00be\u00c9\u00cf\u00d3\u00db\u00e3\u00e8\u00ec",
@@ -288,7 +288,7 @@ var literalNames = [ null, "':'", "','", "'{'", "'}'", "'('", "')'", "'.'",
                      null, null, null, null, null, null, null, null, null, 
                      null, null, null, null, null, null, null, null, null, 
                      null, null, null, null, null, null, null, null, null, 
-                     null, null, null, null, null, null, "'*'" ];
+                     null, null, null, null, null, null, null, "'*'" ];
 
 var symbolicNames = [ null, null, null, null, null, null, null, null, null, 
                       null, null, null, null, null, null, null, null, null, 
@@ -299,8 +299,8 @@ var symbolicNames = [ null, null, null, null, null, null, null, null, null,
                       "K_GROUP", "K_BY", "K_HAVING", "K_UNION", "K_INTERSECT", 
                       "K_EXCEPT", "K_ALL", "K_ORDER", "K_ASC", "K_DESC", 
                       "K_LIMIT", "K_OFFSET", "K_NOT", "K_AND", "K_OR", "K_SUM", 
-                      "K_MIN", "K_MAX", "K_AVG", "K_COUNT", "STRLITERAL", 
-                      "NUMBER", "AST", "VAR_NAME", "WS" ];
+                      "K_MIN", "K_MAX", "K_AVG", "K_COUNT", "SPECIAL_LITERAL", 
+                      "STRLITERAL", "NUMBER", "AST", "VAR_NAME", "WS" ];
 
 var ruleNames =  [ "query", "sfw_query", "select_clause", "from_clause", 
                    "from_item", "where_clause", "groupby_clause", "having_clause", 
@@ -388,11 +388,12 @@ SqlppParser.K_MIN = 58;
 SqlppParser.K_MAX = 59;
 SqlppParser.K_AVG = 60;
 SqlppParser.K_COUNT = 61;
-SqlppParser.STRLITERAL = 62;
-SqlppParser.NUMBER = 63;
-SqlppParser.AST = 64;
-SqlppParser.VAR_NAME = 65;
-SqlppParser.WS = 66;
+SqlppParser.SPECIAL_LITERAL = 62;
+SqlppParser.STRLITERAL = 63;
+SqlppParser.NUMBER = 64;
+SqlppParser.AST = 65;
+SqlppParser.VAR_NAME = 66;
+SqlppParser.WS = 67;
 
 SqlppParser.RULE_query = 0;
 SqlppParser.RULE_sfw_query = 1;
@@ -2791,7 +2792,7 @@ SqlppParser.prototype.expr = function(_p) {
             this.state = 265;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
-            if(((((_la - 3)) & ~0x1f) == 0 && ((1 << (_la - 3)) & ((1 << (SqlppParser.T__2 - 3)) | (1 << (SqlppParser.T__4 - 3)) | (1 << (SqlppParser.T__7 - 3)) | (1 << (SqlppParser.T__12 - 3)) | (1 << (SqlppParser.T__13 - 3)) | (1 << (SqlppParser.T__22 - 3)) | (1 << (SqlppParser.T__24 - 3)) | (1 << (SqlppParser.K_SELECT - 3)) | (1 << (SqlppParser.K_ELEMENT - 3)) | (1 << (SqlppParser.K_ATTRIBUTE - 3)) | (1 << (SqlppParser.K_FROM - 3)) | (1 << (SqlppParser.K_AS - 3)) | (1 << (SqlppParser.K_AT - 3)) | (1 << (SqlppParser.K_INNER - 3)) | (1 << (SqlppParser.K_LEFT - 3)) | (1 << (SqlppParser.K_RIGHT - 3)))) !== 0) || ((((_la - 35)) & ~0x1f) == 0 && ((1 << (_la - 35)) & ((1 << (SqlppParser.K_FULL - 35)) | (1 << (SqlppParser.K_OUTER - 35)) | (1 << (SqlppParser.K_JOIN - 35)) | (1 << (SqlppParser.K_CORRELATE - 35)) | (1 << (SqlppParser.K_ON - 35)) | (1 << (SqlppParser.K_FLATTEN - 35)) | (1 << (SqlppParser.K_WHERE - 35)) | (1 << (SqlppParser.K_GROUP - 35)) | (1 << (SqlppParser.K_BY - 35)) | (1 << (SqlppParser.K_HAVING - 35)) | (1 << (SqlppParser.K_UNION - 35)) | (1 << (SqlppParser.K_INTERSECT - 35)) | (1 << (SqlppParser.K_EXCEPT - 35)) | (1 << (SqlppParser.K_ALL - 35)) | (1 << (SqlppParser.K_ORDER - 35)) | (1 << (SqlppParser.K_ASC - 35)) | (1 << (SqlppParser.K_DESC - 35)) | (1 << (SqlppParser.K_LIMIT - 35)) | (1 << (SqlppParser.K_OFFSET - 35)) | (1 << (SqlppParser.K_NOT - 35)) | (1 << (SqlppParser.K_AND - 35)) | (1 << (SqlppParser.K_OR - 35)) | (1 << (SqlppParser.K_SUM - 35)) | (1 << (SqlppParser.K_MIN - 35)) | (1 << (SqlppParser.K_MAX - 35)) | (1 << (SqlppParser.K_AVG - 35)) | (1 << (SqlppParser.K_COUNT - 35)) | (1 << (SqlppParser.STRLITERAL - 35)) | (1 << (SqlppParser.NUMBER - 35)) | (1 << (SqlppParser.VAR_NAME - 35)))) !== 0)) {
+            if(((((_la - 3)) & ~0x1f) == 0 && ((1 << (_la - 3)) & ((1 << (SqlppParser.T__2 - 3)) | (1 << (SqlppParser.T__4 - 3)) | (1 << (SqlppParser.T__7 - 3)) | (1 << (SqlppParser.T__12 - 3)) | (1 << (SqlppParser.T__13 - 3)) | (1 << (SqlppParser.T__22 - 3)) | (1 << (SqlppParser.T__24 - 3)) | (1 << (SqlppParser.K_SELECT - 3)) | (1 << (SqlppParser.K_ELEMENT - 3)) | (1 << (SqlppParser.K_ATTRIBUTE - 3)) | (1 << (SqlppParser.K_FROM - 3)) | (1 << (SqlppParser.K_AS - 3)) | (1 << (SqlppParser.K_AT - 3)) | (1 << (SqlppParser.K_INNER - 3)) | (1 << (SqlppParser.K_LEFT - 3)) | (1 << (SqlppParser.K_RIGHT - 3)))) !== 0) || ((((_la - 35)) & ~0x1f) == 0 && ((1 << (_la - 35)) & ((1 << (SqlppParser.K_FULL - 35)) | (1 << (SqlppParser.K_OUTER - 35)) | (1 << (SqlppParser.K_JOIN - 35)) | (1 << (SqlppParser.K_CORRELATE - 35)) | (1 << (SqlppParser.K_ON - 35)) | (1 << (SqlppParser.K_FLATTEN - 35)) | (1 << (SqlppParser.K_WHERE - 35)) | (1 << (SqlppParser.K_GROUP - 35)) | (1 << (SqlppParser.K_BY - 35)) | (1 << (SqlppParser.K_HAVING - 35)) | (1 << (SqlppParser.K_UNION - 35)) | (1 << (SqlppParser.K_INTERSECT - 35)) | (1 << (SqlppParser.K_EXCEPT - 35)) | (1 << (SqlppParser.K_ALL - 35)) | (1 << (SqlppParser.K_ORDER - 35)) | (1 << (SqlppParser.K_ASC - 35)) | (1 << (SqlppParser.K_DESC - 35)) | (1 << (SqlppParser.K_LIMIT - 35)) | (1 << (SqlppParser.K_OFFSET - 35)) | (1 << (SqlppParser.K_NOT - 35)) | (1 << (SqlppParser.K_AND - 35)) | (1 << (SqlppParser.K_OR - 35)) | (1 << (SqlppParser.K_SUM - 35)) | (1 << (SqlppParser.K_MIN - 35)) | (1 << (SqlppParser.K_MAX - 35)) | (1 << (SqlppParser.K_AVG - 35)) | (1 << (SqlppParser.K_COUNT - 35)) | (1 << (SqlppParser.SPECIAL_LITERAL - 35)) | (1 << (SqlppParser.STRLITERAL - 35)) | (1 << (SqlppParser.NUMBER - 35)) | (1 << (SqlppParser.VAR_NAME - 35)))) !== 0)) {
                 this.state = 264;
                 this.expr(0);
             }
@@ -2859,7 +2860,7 @@ SqlppParser.prototype.expr = function(_p) {
             this.state = 296;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
-            if(((((_la - 3)) & ~0x1f) == 0 && ((1 << (_la - 3)) & ((1 << (SqlppParser.T__2 - 3)) | (1 << (SqlppParser.T__4 - 3)) | (1 << (SqlppParser.T__7 - 3)) | (1 << (SqlppParser.T__12 - 3)) | (1 << (SqlppParser.T__13 - 3)) | (1 << (SqlppParser.T__22 - 3)) | (1 << (SqlppParser.T__24 - 3)) | (1 << (SqlppParser.K_SELECT - 3)) | (1 << (SqlppParser.K_ELEMENT - 3)) | (1 << (SqlppParser.K_ATTRIBUTE - 3)) | (1 << (SqlppParser.K_FROM - 3)) | (1 << (SqlppParser.K_AS - 3)) | (1 << (SqlppParser.K_AT - 3)) | (1 << (SqlppParser.K_INNER - 3)) | (1 << (SqlppParser.K_LEFT - 3)) | (1 << (SqlppParser.K_RIGHT - 3)))) !== 0) || ((((_la - 35)) & ~0x1f) == 0 && ((1 << (_la - 35)) & ((1 << (SqlppParser.K_FULL - 35)) | (1 << (SqlppParser.K_OUTER - 35)) | (1 << (SqlppParser.K_JOIN - 35)) | (1 << (SqlppParser.K_CORRELATE - 35)) | (1 << (SqlppParser.K_ON - 35)) | (1 << (SqlppParser.K_FLATTEN - 35)) | (1 << (SqlppParser.K_WHERE - 35)) | (1 << (SqlppParser.K_GROUP - 35)) | (1 << (SqlppParser.K_BY - 35)) | (1 << (SqlppParser.K_HAVING - 35)) | (1 << (SqlppParser.K_UNION - 35)) | (1 << (SqlppParser.K_INTERSECT - 35)) | (1 << (SqlppParser.K_EXCEPT - 35)) | (1 << (SqlppParser.K_ALL - 35)) | (1 << (SqlppParser.K_ORDER - 35)) | (1 << (SqlppParser.K_ASC - 35)) | (1 << (SqlppParser.K_DESC - 35)) | (1 << (SqlppParser.K_LIMIT - 35)) | (1 << (SqlppParser.K_OFFSET - 35)) | (1 << (SqlppParser.K_NOT - 35)) | (1 << (SqlppParser.K_AND - 35)) | (1 << (SqlppParser.K_OR - 35)) | (1 << (SqlppParser.K_SUM - 35)) | (1 << (SqlppParser.K_MIN - 35)) | (1 << (SqlppParser.K_MAX - 35)) | (1 << (SqlppParser.K_AVG - 35)) | (1 << (SqlppParser.K_COUNT - 35)) | (1 << (SqlppParser.STRLITERAL - 35)) | (1 << (SqlppParser.NUMBER - 35)) | (1 << (SqlppParser.VAR_NAME - 35)))) !== 0)) {
+            if(((((_la - 3)) & ~0x1f) == 0 && ((1 << (_la - 3)) & ((1 << (SqlppParser.T__2 - 3)) | (1 << (SqlppParser.T__4 - 3)) | (1 << (SqlppParser.T__7 - 3)) | (1 << (SqlppParser.T__12 - 3)) | (1 << (SqlppParser.T__13 - 3)) | (1 << (SqlppParser.T__22 - 3)) | (1 << (SqlppParser.T__24 - 3)) | (1 << (SqlppParser.K_SELECT - 3)) | (1 << (SqlppParser.K_ELEMENT - 3)) | (1 << (SqlppParser.K_ATTRIBUTE - 3)) | (1 << (SqlppParser.K_FROM - 3)) | (1 << (SqlppParser.K_AS - 3)) | (1 << (SqlppParser.K_AT - 3)) | (1 << (SqlppParser.K_INNER - 3)) | (1 << (SqlppParser.K_LEFT - 3)) | (1 << (SqlppParser.K_RIGHT - 3)))) !== 0) || ((((_la - 35)) & ~0x1f) == 0 && ((1 << (_la - 35)) & ((1 << (SqlppParser.K_FULL - 35)) | (1 << (SqlppParser.K_OUTER - 35)) | (1 << (SqlppParser.K_JOIN - 35)) | (1 << (SqlppParser.K_CORRELATE - 35)) | (1 << (SqlppParser.K_ON - 35)) | (1 << (SqlppParser.K_FLATTEN - 35)) | (1 << (SqlppParser.K_WHERE - 35)) | (1 << (SqlppParser.K_GROUP - 35)) | (1 << (SqlppParser.K_BY - 35)) | (1 << (SqlppParser.K_HAVING - 35)) | (1 << (SqlppParser.K_UNION - 35)) | (1 << (SqlppParser.K_INTERSECT - 35)) | (1 << (SqlppParser.K_EXCEPT - 35)) | (1 << (SqlppParser.K_ALL - 35)) | (1 << (SqlppParser.K_ORDER - 35)) | (1 << (SqlppParser.K_ASC - 35)) | (1 << (SqlppParser.K_DESC - 35)) | (1 << (SqlppParser.K_LIMIT - 35)) | (1 << (SqlppParser.K_OFFSET - 35)) | (1 << (SqlppParser.K_NOT - 35)) | (1 << (SqlppParser.K_AND - 35)) | (1 << (SqlppParser.K_OR - 35)) | (1 << (SqlppParser.K_SUM - 35)) | (1 << (SqlppParser.K_MIN - 35)) | (1 << (SqlppParser.K_MAX - 35)) | (1 << (SqlppParser.K_AVG - 35)) | (1 << (SqlppParser.K_COUNT - 35)) | (1 << (SqlppParser.SPECIAL_LITERAL - 35)) | (1 << (SqlppParser.STRLITERAL - 35)) | (1 << (SqlppParser.NUMBER - 35)) | (1 << (SqlppParser.VAR_NAME - 35)))) !== 0)) {
                 this.state = 295;
                 this.expr(0);
             }
@@ -2889,7 +2890,7 @@ SqlppParser.prototype.expr = function(_p) {
             this.state = 308;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
-            if(((((_la - 3)) & ~0x1f) == 0 && ((1 << (_la - 3)) & ((1 << (SqlppParser.T__2 - 3)) | (1 << (SqlppParser.T__4 - 3)) | (1 << (SqlppParser.T__7 - 3)) | (1 << (SqlppParser.T__12 - 3)) | (1 << (SqlppParser.T__13 - 3)) | (1 << (SqlppParser.T__22 - 3)) | (1 << (SqlppParser.T__24 - 3)) | (1 << (SqlppParser.K_SELECT - 3)) | (1 << (SqlppParser.K_ELEMENT - 3)) | (1 << (SqlppParser.K_ATTRIBUTE - 3)) | (1 << (SqlppParser.K_FROM - 3)) | (1 << (SqlppParser.K_AS - 3)) | (1 << (SqlppParser.K_AT - 3)) | (1 << (SqlppParser.K_INNER - 3)) | (1 << (SqlppParser.K_LEFT - 3)) | (1 << (SqlppParser.K_RIGHT - 3)))) !== 0) || ((((_la - 35)) & ~0x1f) == 0 && ((1 << (_la - 35)) & ((1 << (SqlppParser.K_FULL - 35)) | (1 << (SqlppParser.K_OUTER - 35)) | (1 << (SqlppParser.K_JOIN - 35)) | (1 << (SqlppParser.K_CORRELATE - 35)) | (1 << (SqlppParser.K_ON - 35)) | (1 << (SqlppParser.K_FLATTEN - 35)) | (1 << (SqlppParser.K_WHERE - 35)) | (1 << (SqlppParser.K_GROUP - 35)) | (1 << (SqlppParser.K_BY - 35)) | (1 << (SqlppParser.K_HAVING - 35)) | (1 << (SqlppParser.K_UNION - 35)) | (1 << (SqlppParser.K_INTERSECT - 35)) | (1 << (SqlppParser.K_EXCEPT - 35)) | (1 << (SqlppParser.K_ALL - 35)) | (1 << (SqlppParser.K_ORDER - 35)) | (1 << (SqlppParser.K_ASC - 35)) | (1 << (SqlppParser.K_DESC - 35)) | (1 << (SqlppParser.K_LIMIT - 35)) | (1 << (SqlppParser.K_OFFSET - 35)) | (1 << (SqlppParser.K_NOT - 35)) | (1 << (SqlppParser.K_AND - 35)) | (1 << (SqlppParser.K_OR - 35)) | (1 << (SqlppParser.K_SUM - 35)) | (1 << (SqlppParser.K_MIN - 35)) | (1 << (SqlppParser.K_MAX - 35)) | (1 << (SqlppParser.K_AVG - 35)) | (1 << (SqlppParser.K_COUNT - 35)) | (1 << (SqlppParser.STRLITERAL - 35)) | (1 << (SqlppParser.NUMBER - 35)) | (1 << (SqlppParser.VAR_NAME - 35)))) !== 0)) {
+            if(((((_la - 3)) & ~0x1f) == 0 && ((1 << (_la - 3)) & ((1 << (SqlppParser.T__2 - 3)) | (1 << (SqlppParser.T__4 - 3)) | (1 << (SqlppParser.T__7 - 3)) | (1 << (SqlppParser.T__12 - 3)) | (1 << (SqlppParser.T__13 - 3)) | (1 << (SqlppParser.T__22 - 3)) | (1 << (SqlppParser.T__24 - 3)) | (1 << (SqlppParser.K_SELECT - 3)) | (1 << (SqlppParser.K_ELEMENT - 3)) | (1 << (SqlppParser.K_ATTRIBUTE - 3)) | (1 << (SqlppParser.K_FROM - 3)) | (1 << (SqlppParser.K_AS - 3)) | (1 << (SqlppParser.K_AT - 3)) | (1 << (SqlppParser.K_INNER - 3)) | (1 << (SqlppParser.K_LEFT - 3)) | (1 << (SqlppParser.K_RIGHT - 3)))) !== 0) || ((((_la - 35)) & ~0x1f) == 0 && ((1 << (_la - 35)) & ((1 << (SqlppParser.K_FULL - 35)) | (1 << (SqlppParser.K_OUTER - 35)) | (1 << (SqlppParser.K_JOIN - 35)) | (1 << (SqlppParser.K_CORRELATE - 35)) | (1 << (SqlppParser.K_ON - 35)) | (1 << (SqlppParser.K_FLATTEN - 35)) | (1 << (SqlppParser.K_WHERE - 35)) | (1 << (SqlppParser.K_GROUP - 35)) | (1 << (SqlppParser.K_BY - 35)) | (1 << (SqlppParser.K_HAVING - 35)) | (1 << (SqlppParser.K_UNION - 35)) | (1 << (SqlppParser.K_INTERSECT - 35)) | (1 << (SqlppParser.K_EXCEPT - 35)) | (1 << (SqlppParser.K_ALL - 35)) | (1 << (SqlppParser.K_ORDER - 35)) | (1 << (SqlppParser.K_ASC - 35)) | (1 << (SqlppParser.K_DESC - 35)) | (1 << (SqlppParser.K_LIMIT - 35)) | (1 << (SqlppParser.K_OFFSET - 35)) | (1 << (SqlppParser.K_NOT - 35)) | (1 << (SqlppParser.K_AND - 35)) | (1 << (SqlppParser.K_OR - 35)) | (1 << (SqlppParser.K_SUM - 35)) | (1 << (SqlppParser.K_MIN - 35)) | (1 << (SqlppParser.K_MAX - 35)) | (1 << (SqlppParser.K_AVG - 35)) | (1 << (SqlppParser.K_COUNT - 35)) | (1 << (SqlppParser.SPECIAL_LITERAL - 35)) | (1 << (SqlppParser.STRLITERAL - 35)) | (1 << (SqlppParser.NUMBER - 35)) | (1 << (SqlppParser.VAR_NAME - 35)))) !== 0)) {
                 this.state = 307;
                 this.expr(0);
             }
@@ -3399,6 +3400,10 @@ function ValueContext(parser, parent, invokingState) {
 ValueContext.prototype = Object.create(antlr4.ParserRuleContext.prototype);
 ValueContext.prototype.constructor = ValueContext;
 
+ValueContext.prototype.SPECIAL_LITERAL = function() {
+    return this.getToken(SqlppParser.SPECIAL_LITERAL, 0);
+};
+
 ValueContext.prototype.STRLITERAL = function() {
     return this.getToken(SqlppParser.STRLITERAL, 0);
 };
@@ -3429,7 +3434,7 @@ SqlppParser.prototype.value = function() {
         this.enterOuterAlt(localctx, 1);
         this.state = 362;
         _la = this._input.LA(1);
-        if(!(_la===SqlppParser.STRLITERAL || _la===SqlppParser.NUMBER)) {
+        if(!(((((_la - 62)) & ~0x1f) == 0 && ((1 << (_la - 62)) & ((1 << (SqlppParser.SPECIAL_LITERAL - 62)) | (1 << (SqlppParser.STRLITERAL - 62)) | (1 << (SqlppParser.NUMBER - 62)))) !== 0))) {
         this._errHandler.recoverInline(this);
         }
         else {
